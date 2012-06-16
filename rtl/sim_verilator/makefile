@@ -1,6 +1,10 @@
 
 # Default binary to load & run
-TEST_IMAGE?= test_image.bin  
+TEST_IMAGE  ?= test_image.bin  
+SIMARGS     ?=
+
+# Default core to simulate
+RTL_CORE    ?= core_simple
 
 # Waveform trace disabled by default
 TRACE?= 0
@@ -12,7 +16,7 @@ TOP_MODULE = top
 SRC_CPP = main.cpp top.cpp
 
 # Source directories
-INC_DIRS = -I../altor32 -I../soc -I../peripheral
+INC_DIRS = -I../$(RTL_CORE) -I../soc -I../peripheral
 
 # Build directory
 BUILD_DIR = build
@@ -30,7 +34,7 @@ compile: clean
 	make -j -f V$(TOP_MODULE).mk -C $(BUILD_DIR)
 
 run: compile
-	./$(BUILD_DIR)/V$(TOP_MODULE) -f $(TEST_IMAGE)
+	./$(BUILD_DIR)/V$(TOP_MODULE) -f $(TEST_IMAGE) $(SIMARGS)
 	
 ifeq ($(TRACE),1)	
 view:
