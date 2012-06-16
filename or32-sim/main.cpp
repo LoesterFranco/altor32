@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
     unsigned int loadAddr = DEFAULT_LOAD_ADDR;
     unsigned int memBase = DEFAULT_MEM_BASE;
     unsigned int memSize = DEFAULT_MEM_SIZE;
+    unsigned int startAddr = VECTOR_RESET;
     int max_cycles = -1;
     char *filename = DEFAULT_FILENAME;
     int help = 0;
@@ -72,7 +73,7 @@ int main(int argc, char *argv[])
     int exitcode = 0;
     OR32 *sim = NULL;
 
-    while ((c = getopt (argc, argv, "tv:l:b:s:f:c:")) != -1)
+    while ((c = getopt (argc, argv, "tv:l:b:s:f:c:x:")) != -1)
     {
         switch(c)
         {
@@ -90,6 +91,9 @@ int main(int argc, char *argv[])
                  break;
             case 's':
                  memSize = strtoul(optarg, NULL, 0);
+                 break;
+            case 'x':
+                 startAddr = strtoul(optarg, NULL, 0);
                  break;
             case 'f':
                  filename = optarg;
@@ -113,16 +117,17 @@ int main(int argc, char *argv[])
         fprintf (stderr,"-b 0xnnnn       = Memory base address\n");
         fprintf (stderr,"-s 0xnnnn       = Memory size\n");
         fprintf (stderr,"-l 0xnnnn       = Executable load address\n");     
+        fprintf (stderr,"-x 0xnnnn       = Executable boot address\n");     
         fprintf (stderr,"-c nnnn         = Max instructions to execute\n");
  
         exit(-1);
     }
 
     sim = new OR32(memBase, memSize);
-    sim->Reset(loadAddr + VECTOR_RESET);
+    sim->Reset(startAddr);
 
-	if (trace)
-		sim->EnableTrace(trace_mask);
+    if (trace)
+        sim->EnableTrace(trace_mask);
 
     FILE *f = fopen(filename, "rb");
     if (f)

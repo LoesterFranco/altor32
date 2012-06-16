@@ -206,13 +206,14 @@ enum ERegisters
 
 //--------------------------------------------------------------------
 // OR32 Vectors
+// NOTE: These differ from the real OR32 vectors for space reasons
 //--------------------------------------------------------------------
 #define VECTOR_RESET                            0x100
-#define VECTOR_TICK_TIMER                       0x500
-#define VECTOR_ILLEGAL_INST                     0x700
-#define VECTOR_EXTINT                           0x800
-#define VECTOR_SYSCALL                          0xC00
-#define VECTOR_TRAP                             0xE00
+#define VECTOR_ILLEGAL_INST                     0x200
+#define VECTOR_EXTINT                           0x300
+#define VECTOR_SYSCALL                          0x400
+#define VECTOR_BUS_ERROR                        0x500
+#define VECTOR_TRAP                             0x600
 
 #endif
 

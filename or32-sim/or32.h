@@ -46,7 +46,7 @@ protected:
     virtual void        PeripheralReset(void) { }
     virtual void        PeripheralClock(void) { }
     virtual TRegister   PeripheralAccess(TAddress addr, TRegister data_in, TRegister wr, TRegister rd) { return 0; }
-    virtual bool        PeripheralInt(void) { return false; }
+    virtual bool	    PeripheralInterrupt(void) { return false; }
 
 protected:  
     // Execution monitoring

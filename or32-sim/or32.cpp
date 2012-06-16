@@ -755,11 +755,15 @@ void OR32::Execute(void)
     // If not branching, handle interrupts / exceptions
     else if (v_jmp == 0)
     {
-        // External interrupt (and not handling an exception)?
-        if (PeripheralInt() == 1 && (r_sr & (1 << OR32_SR_IEE)) && v_exception == 0)
+        // Check for external interrupt
+        if ((v_exception == 0) && (r_sr & (1 << OR32_SR_IEE)))
         {
-            v_exception = 1;
-            v_vector = VECTOR_EXTINT;
+            // External interrupt (and not handling an exception)?
+            if (PeripheralInterrupt())
+            {
+                v_exception = 1;
+                v_vector = VECTOR_EXTINT;
+            }
         }
 
         // Interrupt / Exception
