@@ -1,0 +1,37 @@
+###############################################################################
+## Makefile
+###############################################################################
+
+# Target
+TARGET       = bootram_gen
+
+# Default input / output files
+BOOT_BIN    ?= boot.bin
+OUTPUT_VHDL ?= output.vhd
+
+# Options
+CFLAGS	    = 
+LDFLAGS     = 
+
+# Source Files
+OBJ = bootram_gen.o
+
+###############################################################################
+# Rules
+###############################################################################
+all: $(TARGET)
+	
+clean:
+	-rm *.o $(TARGET)
+
+%.o : %.c
+	gcc -c $(CFLAGS) $< -o $@
+
+%.o : %.cpp
+	g++ -c $(CFLAGS) $< -o $@
+
+$(TARGET): $(OBJ) makefile
+	g++ $(LDFLAGS) $(LIBS) $(OBJ) -o $@
+
+run:
+	./$(TARGET) -t bootram_template.vhd -f $(BOOT_BIN) -o $(OUTPUT_VHDL)
