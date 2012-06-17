@@ -9,6 +9,9 @@ RTL_CORE    ?= core_simple
 # Waveform trace disabled by default
 TRACE?= 0
 
+# Enable debug output
+DEBUG?= 0
+
 # Top module (without .v extension)
 TOP_MODULE = top
 
@@ -25,6 +28,10 @@ VERILATOR_OPTS =
 
 ifeq ($(TRACE),1)
     VERILATOR_OPTS += --trace
+endif
+
+ifeq ($(DEBUG),1)
+    VERILATOR_OPTS += +define+CONF_CORE_DEBUG+
 endif
 
 all: run                                                                                      

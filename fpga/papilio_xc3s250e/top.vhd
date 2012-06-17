@@ -50,7 +50,7 @@ generic
 (
     OSC_MHZ     : integer := 32;
     -- Target CPU MHz (must be a multiple of 2)
-    CPU_MHZ     : integer := 60
+    CPU_MHZ     : integer := 58
 );
 port 
 (
@@ -220,6 +220,7 @@ port map
     int_mem_data_i      => bram_mem_data_r,
     int_mem_wr_o        => bram_mem_wr,    
     int_mem_rd_o        => open,
+    int_mem_pause_i     => '0',
 
     -- External IO
     ext_io_addr_o       => io_address,

@@ -244,20 +244,17 @@ begin
        r_rb		<= 5'b00000;
    end
    // Instruction fetch cycle
-   else if ((en_i == 1'b1) && (mem_pause_i == 1'b0))
+   else if ((en_i == 1'b1) && (r_state == STATE_FETCH))
    begin 
-        if (r_state == STATE_FETCH)
-        begin                     
-           // Decode opcode in-order to perform register accesses  
-           r_opcode <= mem_data_in_i;
-           r_rd		<= mem_data_in_i[25:21];
-           r_ra		<= mem_data_in_i[20:16];
-           r_rb		<= mem_data_in_i[15:11];
-           
+       // Decode opcode in-order to perform register accesses  
+       r_opcode <= mem_data_in_i;
+       r_rd		<= mem_data_in_i[25:21];
+       r_ra		<= mem_data_in_i[20:16];
+       r_rb		<= mem_data_in_i[15:11];
+       
 `ifdef CONF_CORE_DEBUG           
-           $display("%08x: Fetch 0x%08x", r_pc, mem_data_in_i);
+       $display("%08x: Fetch 0x%08x", r_pc, mem_data_in_i);
 `endif	  	       
-        end
    end 
 end
 
@@ -322,14 +319,23 @@ begin
        break_o              <= 1'b0;
        r_mem_access         <= 1'b0;
    end
-   // Enabled & memory not busy
-   else if ((en_i == 1'b1) && (mem_pause_i == 1'b0)) 
+   // Enabled
+   else if (en_i == 1'b1)
    begin 
    
         r_mem_access <= 1'b0;
         mem_rd       <= 1'b0;
         mem_wr       <= 4'b0000;
         break_o      <= 1'b0;
+        
+        // Memory stalls are not supported by this version of the core
+        if (mem_pause_i == 1'b1)
+        begin
+            fault_o <= 1'b1;
+`ifdef CONF_CORE_DEBUG
+            $display("Memory pause not supported on this implementation!");
+`endif         
+        end
    
         // Execute stage?            
         if (r_state == STATE_EXECUTE)
@@ -1014,12 +1020,6 @@ begin
            end                
      end
    end
-   // Memory paused?
-   else if (en_i == 1'b1)
-   begin
-       mem_rd <= 1'b0;
-       mem_wr <= 4'b0000;
-   end
 end
 
 //-------------------------------------------------------------------
@@ -1034,11 +1034,13 @@ begin
    begin
        r_writeback <= 1'b1;
    end
-   else 
+   // Enabled
+   else if (en_i == 1'b1)
    begin 
        r_writeback <= 1'b0;
        
-       if ((en_i == 1'b1) && (mem_pause_i == 1'b0) && (r_state == STATE_WRITEBACK))
+       // Writeback stage?
+       if (r_state == STATE_WRITEBACK)
        begin 
        
            wb_v_reg_result = r_reg_result;
@@ -1149,8 +1151,7 @@ begin
    begin
        r_state <= STATE_RESET;
    end
-   else 
-   if (en_i == 1'b1 && mem_pause_i == 1'b0) 
+   else if (en_i == 1'b1) 
    begin 
        case (r_state)
            STATE_RESET :
@@ -1189,7 +1190,7 @@ end
 assign mem_addr_o           = (r_mem_access == 1'b1) ? mem_addr : r_pc;
 assign mem_data_out_o       = (r_mem_access == 1'b1) ? mem_data_out : 32'h00000000;
 assign mem_rd_o             = (r_mem_access == 1'b1) ? mem_rd : 1'b1;
-assign mem_wr_o             = (mem_pause_i == 1'b0) ?  mem_wr : 4'b0000;
+assign mem_wr_o             = mem_wr;
 
 assign dbg_pc_o             = r_pc;
 

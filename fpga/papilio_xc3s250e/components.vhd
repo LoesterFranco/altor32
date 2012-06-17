@@ -51,74 +51,75 @@ package peripherals is
 component alt_soc
 generic
 (
-	CLK_KHZ				: integer := 12288;
-	UART_BAUD			: integer := 115200;
-	SPI_FLASH_CLK_KHZ	: integer := 12288 / 2;
-	EXTERNAL_INTERRUPTS : integer := 1;
-	CORE_ID				: std_logic_vector := X"00000000";
-	BOOT_VECTOR			: std_logic_vector := X"00000000";
-	ISR_VECTOR			: std_logic_vector := X"0000003C"	
+    CLK_KHZ             : integer := 12288;
+    UART_BAUD           : integer := 115200;
+    SPI_FLASH_CLK_KHZ   : integer := 12288 / 2;
+    EXTERNAL_INTERRUPTS : integer := 1;
+    CORE_ID             : std_logic_vector := X"00000000";
+    BOOT_VECTOR         : std_logic_vector := X"00000000";
+    ISR_VECTOR          : std_logic_vector := X"0000003C"    
 );
 port
 (
-	-- General - clocking & rst_i
-	clk_i				: in std_logic;
-	rst_i				: in std_logic;   
-	en_i				: in std_logic;
-	ext_intr_i			: in std_logic_vector(EXTERNAL_INTERRUPTS-1 downto 0);
-	fault_o				: out std_logic;
-	break_o				: out std_logic;
+    -- General - clocking & rst_i
+    clk_i               : in std_logic;
+    rst_i               : in std_logic;   
+    en_i                : in std_logic;
+    ext_intr_i          : in std_logic_vector(EXTERNAL_INTERRUPTS-1 downto 0);
+    fault_o             : out std_logic;
+    break_o             : out std_logic;
 
-	-- UART
-	uart_tx_o			: out std_logic;   
-	uart_rx_i			: in std_logic;
-	
-	-- BootRAM
-	int_mem_addr_o		: out	std_logic_vector(32-1 downto 0);
-	int_mem_data_o		: out	std_logic_vector(32-1 downto 0);
-	int_mem_data_i		: in 	std_logic_vector(32-1 downto 0);
-	int_mem_wr_o		: out	std_logic_vector(3 downto 0);	
-	int_mem_rd_o		: out	std_logic;	
-	
-	-- External IO
-	ext_io_addr_o		: out	std_logic_vector(32-1 downto 0);
-	ext_io_data_o		: out	std_logic_vector(32-1 downto 0);
-	ext_io_data_i		: in 	std_logic_vector(32-1 downto 0);
-	ext_io_wr_o			: out	std_logic_vector(3 downto 0);
-	ext_io_rd_o			: out 	std_logic;   
-	ext_io_pause_i		: in 	std_logic;
-	
-	-- SPI Flash
-	flash_cs_o			: out std_logic;   
-	flash_si_o			: out std_logic;
-	flash_so_i			: in std_logic;   
-	flash_sck_o			: out std_logic;		
-	
-	-- Debug Access
-	dbg_pc_o			: out std_logic_vector(31 downto 0);
-	
-	-- Debug UART Output
-	dbg_uart_data_o		: out std_logic_vector(7 downto 0);
-	dbg_uart_wr_o		: out std_logic				
+    -- UART
+    uart_tx_o           : out std_logic;   
+    uart_rx_i           : in  std_logic;
+    
+    -- BootRAM
+    int_mem_addr_o      : out std_logic_vector(32-1 downto 0);
+    int_mem_data_o      : out std_logic_vector(32-1 downto 0);
+    int_mem_data_i      : in  std_logic_vector(32-1 downto 0);
+    int_mem_wr_o        : out std_logic_vector(3 downto 0);    
+    int_mem_rd_o        : out std_logic;    
+    int_mem_pause_i     : in  std_logic;
+    
+    -- External IO
+    ext_io_addr_o       : out std_logic_vector(32-1 downto 0);
+    ext_io_data_o       : out std_logic_vector(32-1 downto 0);
+    ext_io_data_i       : in  std_logic_vector(32-1 downto 0);
+    ext_io_wr_o         : out std_logic_vector(3 downto 0);
+    ext_io_rd_o         : out std_logic;   
+    ext_io_pause_i      : in  std_logic;
+    
+    -- SPI Flash
+    flash_cs_o          : out std_logic;   
+    flash_si_o          : out std_logic;
+    flash_so_i          : in  std_logic;   
+    flash_sck_o         : out std_logic;        
+    
+    -- Debug Access
+    dbg_pc_o            : out std_logic_vector(31 downto 0);
+    
+    -- Debug UART Output
+    dbg_uart_data_o     : out std_logic_vector(7 downto 0);
+    dbg_uart_wr_o       : out std_logic                
 );
 end component;
 
 component ClockDCM is
 generic 
 (
-    CLK_IN_MHZ      : integer := 32;
-    CLK_OUT_MHZ     : integer := 64
+    CLK_IN_MHZ          : integer := 32;
+    CLK_OUT_MHZ         : integer := 64
 );
 port
 ( 
-    CLKIN_IN        : in    std_logic; 
-    CLKFX_OUT       : out   std_logic; 
-    CLKIN_IBUFG_OUT : out   std_logic
+    CLKIN_IN            : in    std_logic; 
+    CLKFX_OUT           : out   std_logic; 
+    CLKIN_IBUFG_OUT     : out   std_logic
 );
 end component;
 
 end peripherals;
-										 
+                                         
 package body peripherals is
-										
+                                        
 end; --package body

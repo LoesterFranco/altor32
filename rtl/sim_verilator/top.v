@@ -143,7 +143,8 @@ u1_cpu
     .int_mem_data_o(int_mem_data_o), 
     .int_mem_data_i(int_mem_data_i), 
     .int_mem_wr_o(int_mem_wr_o), 
-    .int_mem_rd_o(/*open */),     
+    .int_mem_rd_o(/*open */),  
+    .int_mem_pause_i(1'b0),
     
     // External I/O or Memory
     .ext_io_addr_o(/*open */), 

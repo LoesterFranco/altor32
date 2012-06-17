@@ -34,10 +34,6 @@
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="5"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="10"/>
     </file>
-    <file xil_pn:name="../../rtl/soc/mpx_soc.v" xil_pn:type="FILE_VERILOG"/>
-    <file xil_pn:name="../../rtl/altor32/altor32.v" xil_pn:type="FILE_VERILOG"/>
-    <file xil_pn:name="../../rtl/altor32/altor32_alu.v" xil_pn:type="FILE_VERILOG"/>
-    <file xil_pn:name="../../rtl/altor32/altor32_regfile_xil.v" xil_pn:type="FILE_VERILOG"/>
     <file xil_pn:name="../../rtl/peripheral/spi_master.v" xil_pn:type="FILE_VERILOG">
       <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="14"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="4"/>
@@ -51,15 +47,15 @@
       <association xil_pn:name="Implementation" xil_pn:seqID="6"/>
     </file>
     <file xil_pn:name="../../rtl/core_simple/altor32.v" xil_pn:type="FILE_VERILOG">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="68"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="21"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="5"/>
     </file>
     <file xil_pn:name="../../rtl/core_simple/altor32_alu.v" xil_pn:type="FILE_VERILOG">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="69"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="22"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="2"/>
     </file>
     <file xil_pn:name="../../rtl/core_simple/altor32_regfile_xil.v" xil_pn:type="FILE_VERILOG">
-      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="72"/>
+      <association xil_pn:name="BehavioralSimulation" xil_pn:seqID="23"/>
       <association xil_pn:name="Implementation" xil_pn:seqID="1"/>
     </file>
   </files>
@@ -116,6 +112,7 @@
     <property xil_pn:name="Enable BitStream Compression" xil_pn:value="false" xil_pn:valueState="default"/>
     <property xil_pn:name="Enable Cyclic Redundancy Checking (CRC)" xil_pn:value="true" xil_pn:valueState="default"/>
     <property xil_pn:name="Enable Debugging of Serial Mode BitStream" xil_pn:value="false" xil_pn:valueState="default"/>
+    <property xil_pn:name="Enable Hardware Co-Simulation" xil_pn:value="false" xil_pn:valueState="default"/>
     <property xil_pn:name="Enable Internal Done Pipe" xil_pn:value="false" xil_pn:valueState="default"/>
     <property xil_pn:name="Enable Message Filtering" xil_pn:value="true" xil_pn:valueState="non-default"/>
     <property xil_pn:name="Enable Outputs (Output Events)" xil_pn:value="Default (5)" xil_pn:valueState="default"/>
@@ -367,10 +364,10 @@
     <!-- Do not hand-edit this section, as it will be overwritten when the    -->
     <!-- project is analyzed based on files automatically identified as       -->
     <!-- include files.                                                       -->
-    <file xil_pn:name="../../rtl/soc/alt_soc_defs.v" xil_pn:type="FILE_VERILOG"/>
-    <file xil_pn:name="../../rtl/soc/alt_soc_conf.v" xil_pn:type="FILE_VERILOG"/>
     <file xil_pn:name="../../rtl/core_simple/altor32_defs.v" xil_pn:type="FILE_VERILOG"/>
     <file xil_pn:name="../../rtl/core_simple/altor32_funcs.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../rtl/soc/alt_soc_defs.v" xil_pn:type="FILE_VERILOG"/>
+    <file xil_pn:name="../../rtl/soc/alt_soc_conf.v" xil_pn:type="FILE_VERILOG"/>
   </autoManagedFiles>
 
 </project>

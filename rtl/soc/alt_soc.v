@@ -68,6 +68,7 @@ module alt_soc
     int_mem_data_i, 
     int_mem_wr_o, 
     int_mem_rd_o, 
+    int_mem_pause_i, 
     
     // External IO
     ext_io_addr_o, 
@@ -118,6 +119,7 @@ output [31:0]       int_mem_data_o /*verilator public*/;
 input [31:0]        int_mem_data_i /*verilator public*/;
 output [3:0]        int_mem_wr_o /*verilator public*/;
 output              int_mem_rd_o /*verilator public*/;
+input               int_mem_pause_i /*verilator public*/;
 output [31:0]       ext_io_addr_o /*verilator public*/;
 output [31:0]       ext_io_data_o /*verilator public*/;
 input [31:0]        ext_io_data_i /*verilator public*/;
@@ -628,7 +630,7 @@ end
 //-----------------------------------------------------------------
 // Read Port
 //-----------------------------------------------------------------   
-always @ (r_mem_sel or int_mem_data_i or io_data_r or ext_io_data_i)
+always @ (r_mem_sel or int_mem_data_i or io_data_r or ext_io_data_i or int_mem_pause_i or ext_io_pause_i)
 begin 
    case (r_mem_sel)
    
@@ -636,7 +638,7 @@ begin
    `MEM_REGION_INTERNAL : 
    begin 
        cpu_data_r   = int_mem_data_i;
-       cpu_pause    = 1'b0;
+       cpu_pause    = int_mem_pause_i;
    end
      
    // Core I/O peripherals
@@ -650,7 +652,7 @@ begin
    `MEM_REGION_EXT_IO : 
    begin 
        cpu_data_r   = ext_io_data_i;
-       cpu_pause    = 1'b0;
+       cpu_pause    = ext_io_pause_i;
    end
    
    default : 
