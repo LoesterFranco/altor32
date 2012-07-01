@@ -1095,7 +1095,7 @@ begin
                    
                    // Sign extend LH
                    if (wb_v_reg_result[15] == 1'b1)
-                        wb_v_reg_result = {16'h1111,wb_v_reg_result[15:0]};
+                        wb_v_reg_result = {16'hFFFF,wb_v_reg_result[15:0]};
                end
                
                `INST_OR32_LHZ: // l.lhz

@@ -43,12 +43,6 @@
 `define INST_OR32_JAL                            8'h01
 `define INST_OR32_JALR                           8'h12
 `define INST_OR32_JR                             8'h11
-`define INST_OR32_LBS                            8'h24
-`define INST_OR32_LHS                            8'h26
-`define INST_OR32_LWS                            8'h22
-`define INST_OR32_LBZ                            8'h23
-`define INST_OR32_LHZ                            8'h25
-`define INST_OR32_LWZ                            8'h21
 `define INST_OR32_MFSPR                          8'h2D
 `define INST_OR32_MOVHI                          8'h06
 `define INST_OR32_MTSPR                          8'h30
