@@ -50,7 +50,7 @@ generic
 (
     OSC_MHZ     : integer := 32;
     -- Target CPU MHz (must be a multiple of 2)
-    CPU_MHZ     : integer := 58
+    CPU_MHZ     : integer := 32
 );
 port 
 (
@@ -154,20 +154,7 @@ begin
 -----------------------------------------------
 -- Instantiation
 -----------------------------------------------
-
--- DCM Clock Generator
-U1_DCM: ClockDCM
-generic map 
-(
-    CLK_IN_MHZ      => OSC_MHZ,
-    CLK_OUT_MHZ     => CPU_MHZ
-)
-port map
-(
-    CLKIN_IN        => clk,
-    CLKFX_OUT       => cpu_clk,
-    CLKIN_IBUFG_OUT => open
-);    
+cpu_clk <= clk;
 
 -- 24KB Block RAM (0x0000 - 0x6000)
 U2_RAM: ram 

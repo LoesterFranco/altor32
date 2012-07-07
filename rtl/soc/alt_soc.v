@@ -137,8 +137,6 @@ output              dbg_uart_wr_o /*verilator public*/;
 //-----------------------------------------------------------------
 // Registers
 //-----------------------------------------------------------------
-wire                alt_reset;
-
 reg [31:0]          v_irq_status;
 reg [2:0]           r_mem_sel;
 wire [31:0]         cpu_address;
@@ -150,49 +148,12 @@ reg                 cpu_pause;
 
 reg [31:0]          io_address;
 reg [31:0]          io_data_w;
-reg [31:0]          io_data_r;
+wire [31:0]         io_data_r;
 reg [3:0]           io_wr;
 reg                 io_rd;
 
-// UART
-reg [7:0]           uart_tx_data;
-wire [7:0]          uart_rx_data;
-reg                 uart_wr;
-reg                 uart_rd;
-wire                uart_tx_busy;
-wire                uart_rx_avail;
-
-// Systick Timer
-reg                 systick_intr;
-reg [31:0]          systick_count;
-reg [31:0]          systick_clk_count;
-
-// Hi-res system clock tick counter
-reg [31:0]          hr_timer_cnt;
-reg [31:0]          hr_timer_match;
-
 // IRQ Status
 wire                intr_in;
-reg [31:0]          irq_status;
-reg [31:0]          irq_mask;
-
-// Watchdog
-`ifdef SOC_CONF_ENABLE_WATCHDOG  
-    reg             watchdog_enable;
-    reg [15:0]      watchdog_threshold;
-    reg             watchdog_expired;
-    reg             watchdog_load;
-    reg [15:0]      watchdog_counter;
-    reg             watchdog_alt_reset;
-`endif
-
-// SPI Flash
-`ifdef SOC_CONF_ENABLE_SPI_FLASH
-    reg             spi_flash_start;
-    wire            spi_flash_busy;
-    reg [7:0]       spi_flash_data_wr;
-    wire [7:0]      spi_flash_data_rd;
-`endif
 
 // Output Signals
 wire                uart_tx_o;
@@ -204,9 +165,37 @@ reg [31:0]          ext_io_addr_o;
 reg [31:0]          ext_io_data_o;
 reg [3:0]           ext_io_wr_o;
 reg                 ext_io_rd_o;
-reg                 flash_cs_o;
+wire                flash_cs_o;
 wire                flash_si_o;
 wire                flash_sck_o;
+
+// Peripheral Interface
+wire [7:0]         uart_addr;
+wire [31:0]        uart_data_o;
+wire [31:0]        uart_data_i;
+wire [3:0]         uart_wr;
+wire               uart_rd;
+wire               uart_intr;
+
+wire [7:0]         spi_addr;
+wire [31:0]        spi_data_o;
+wire [31:0]        spi_data_i;
+wire [3:0]         spi_wr;
+wire               spi_rd;
+
+wire [7:0]         timer_addr;
+wire [31:0]        timer_data_o;
+wire [31:0]        timer_data_i;
+wire [3:0]         timer_wr;
+wire               timer_rd;
+wire               timer_intr_systick;
+wire               timer_intr_hires;
+
+wire [7:0]         intr_addr;
+wire [31:0]        intr_data_o;
+wire [31:0]        intr_data_i;
+wire [3:0]         intr_wr;
+wire               intr_rd;
 
 //-----------------------------------------------------------------
 // Instantiation
@@ -217,7 +206,7 @@ altor32
 u1_cpu
 (
     .clk_i(clk_i), 
-    .rst_i(alt_reset), 
+    .rst_i(rst_i), 
     .en_i(en_i), 
     .intr_i(intr_in), 
     .fault_o(fault_o), 
@@ -231,8 +220,81 @@ u1_cpu
     .dbg_pc_o(dbg_pc_o)
 );
 
+// Peripheral Interconnect
+soc_pif  
+u2_soc
+( 
+    // General - Clocking & Reset
+    .clk_i(clk_i), 
+    .rst_i(rst_i), 
+
+    // I/O bus
+    .io_addr_i(io_address), 
+    .io_data_i(io_data_w), 
+    .io_data_o(io_data_r), 
+    .io_wr_i(io_wr), 
+    .io_rd_i(io_rd), 
+    
+    // Peripherals      
+    .periph0_addr_o(uart_addr), 
+    .periph0_data_o(uart_data_o), 
+    .periph0_data_i(uart_data_i), 
+    .periph0_wr_o(uart_wr), 
+    .periph0_rd_o(uart_rd),   
+    
+    .periph1_addr_o(timer_addr), 
+    .periph1_data_o(timer_data_o), 
+    .periph1_data_i(timer_data_i), 
+    .periph1_wr_o(timer_wr), 
+    .periph1_rd_o(timer_rd),     
+    
+    .periph2_addr_o(intr_addr), 
+    .periph2_data_o(intr_data_o), 
+    .periph2_data_i(intr_data_i), 
+    .periph2_wr_o(intr_wr), 
+    .periph2_rd_o(intr_rd),         
+    
+`ifdef SOC_CONF_ENABLE_SPI_FLASH    
+    .periph3_addr_o(spi_addr), 
+    .periph3_data_o(spi_data_o), 
+    .periph3_data_i(spi_data_i), 
+    .periph3_wr_o(spi_wr), 
+    .periph3_rd_o(spi_rd),   
+`else
+    .periph3_addr_o(/*open*/), 
+    .periph3_data_o(/*open*/), 
+    .periph3_data_i(32'h00000000), 
+    .periph3_wr_o(/*open*/), 
+    .periph3_rd_o(/*open*/), 
+`endif    
+    
+    .periph4_addr_o(/*open*/), 
+    .periph4_data_o(/*open*/), 
+    .periph4_data_i(32'h00000000), 
+    .periph4_wr_o(/*open*/), 
+    .periph4_rd_o(/*open*/), 
+    
+    .periph5_addr_o(/*open*/), 
+    .periph5_data_o(/*open*/), 
+    .periph5_data_i(32'h00000000), 
+    .periph5_wr_o(/*open*/), 
+    .periph5_rd_o(/*open*/), 
+    
+    .periph6_addr_o(/*open*/), 
+    .periph6_data_o(/*open*/), 
+    .periph6_data_i(32'h00000000), 
+    .periph6_wr_o(/*open*/), 
+    .periph6_rd_o(/*open*/), 
+    
+    .periph7_addr_o(/*open*/), 
+    .periph7_data_o(/*open*/), 
+    .periph7_data_i(32'h00000000), 
+    .periph7_wr_o(/*open*/), 
+    .periph7_rd_o(/*open*/)                            
+);
+
 // UART
-uart  
+uart_periph  
 #(
     .UART_DIVISOR(((CLK_KHZ * 1000) / UART_BAUD))
 ) 
@@ -240,38 +302,37 @@ u3_uart
 (
     .clk_i(clk_i), 
     .rst_i(rst_i), 
-    .data_i(uart_tx_data), 
-    .data_o(uart_rx_data), 
+    .intr_o(uart_intr),
+    .addr_i(uart_addr), 
+    .data_o(uart_data_i), 
+    .data_i(uart_data_o), 
     .wr_i(uart_wr), 
-    .rd_i(uart_rd), 
-    .tx_busy_o(uart_tx_busy), 
-    .rx_ready_o(uart_rx_avail), 
-    .rxd_i(uart_rx_i), 
-    .txd_o(uart_tx_o)
+    .rd_i(uart_rd),
+    .rx_i(uart_rx_i), 
+    .tx_o(uart_tx_o)
 );
 
 `ifdef SOC_CONF_ENABLE_SPI_FLASH
     // SPI Flash Master
-    spi_master  
+    spim_periph  
     #(
-        .CLK_DIV(CLK_KHZ / SPI_FLASH_CLK_KHZ),
-        .TRANSFER_WIDTH(8)
+        .CLK_DIV(CLK_KHZ / SPI_FLASH_CLK_KHZ)
     ) 
     u4_spi_flash
     (
         // Clocking / Reset
         .clk_i(clk_i), 
         .rst_i(rst_i), 
-        // Control & Status
-        .start_i(spi_flash_start), 
-        .done_o(/*open */), 
-        .busy_o(spi_flash_busy), 
-        // Data
-        .data_i(spi_flash_data_wr), 
-        .data_o(spi_flash_data_rd), 
+        .intr_o(/*open*/),
+        // Peripheral I/O
+        .addr_i(spi_addr), 
+        .data_o(spi_data_i), 
+        .data_i(spi_data_o), 
+        .wr_i(spi_wr), 
+        .rd_i(spi_rd),         
         // SPI interface
         .spi_clk_o(flash_sck_o), 
-        .spi_ss_o(/*open */), 
+        .spi_ss_o(flash_cs_o), 
         .spi_mosi_o(flash_si_o), 
         .spi_miso_i(flash_so_i)
     );
@@ -282,266 +343,49 @@ u3_uart
     assign flash_sck_o  = 1'b0;
 `endif
 
-//-----------------------------------------------------------------
-// I/O Handlers
-//-----------------------------------------------------------------   
-always @ (posedge rst_i or posedge clk_i )
-begin 
-   if (rst_i == 1'b1) 
-   begin 
-       // UART
-       uart_tx_data     <= 8'h00;
-       uart_wr          <= 1'b0;
-       
-       // Interrupt Status
-       irq_status       <= 32'h00000000;
-       irq_mask         <= 32'h00000000;
-       hr_timer_cnt     <= 32'h00000000;
-       hr_timer_match   <= 32'h00000000;
-       
-       // SPI Flash (Configuration PROM)
-    `ifdef SOC_CONF_ENABLE_SPI_FLASH       
-       flash_cs_o       <= 1'b1;
-       spi_flash_start  <= 1'b0;
-       spi_flash_data_wr<= 8'h00;
-    `endif
-       
-       // Watchdog
-    `ifdef SOC_CONF_ENABLE_WATCHDOG       
-       watchdog_enable      <= 1'b0;
-       watchdog_load        <= 1'b0;
-       watchdog_threshold   <= 16'h0000;
-    `endif       
-   end
-   else 
-   begin 
-   
-       uart_wr            <= 1'b0;
-    `ifdef SOC_CONF_ENABLE_SPI_FLASH
-       spi_flash_start    <= 1'b0;
-    `endif
-    `ifdef SOC_CONF_ENABLE_WATCHDOG  
-       watchdog_load      <= 1'b0;
-    `endif       
-       
-       // Get current IRQ status
-       v_irq_status = irq_status;
-       
-       // Clock tick counter
-       hr_timer_cnt <= (hr_timer_cnt + 1);
-       
-       // Systick IRQ?
-       if (systick_intr == 1'b1)
-           v_irq_status[`IRQ_SYSTICK] = 1'b1;
-           
-       // UART IRQ?
-       if (uart_rx_avail == 1'b1) 
-           v_irq_status[`IRQ_UART_RX_AVAIL] = 1'b1;
-           
-       // Hi-res Timer IRQ [IRQ6]
-       if ((hr_timer_match != 32'h00000000) && (hr_timer_match == hr_timer_cnt))
-           v_irq_status[`IRQ_PIT] = 1'b1;
-           
-       // External interrupts
-       begin : ext_ints_loop
-           integer i;
-           for (i=0; i< EXTERNAL_INTERRUPTS; i=i+1) 
-           begin 
-               if (ext_intr_i[i] == 1'b1) 
-                   v_irq_status[(`IRQ_EXT_FIRST + i)] = 1'b1;
-           end
-       end
-       
-       // Update IRQ status
-       irq_status <= v_irq_status;
-       
-       // IO Write Cycle
-       if (io_wr != 4'b0000)
-           case (io_address[7:0])
-           
-           `UART_UDR : 
-           begin 
-               uart_tx_data <= io_data_w[7:0];
-               uart_wr <= 1'b1;
-           end
-           
-           `IRQ_MASK_SET : 
-                irq_mask <= (irq_mask | io_data_w);
-                
-           `IRQ_MASK_CLR : 
-                irq_mask <= (irq_mask & ~ (io_data_w));
-                
-           `IRQ_STATUS : // (IRQ Acknowledge)
-                irq_status <= (v_irq_status & ~ (io_data_w));
-                
-    `ifdef SOC_CONF_ENABLE_WATCHDOG
-           `WATCHDOG_CTRL :
-           begin
-                // Enable watchdog if non-zero
-                if (io_data_w[15:0] != 16'h0000)
-                    watchdog_enable    <= 1'b1;
-                else
-                    watchdog_enable    <= 1'b0;
+timer_periph  
+#(
+    .CLK_KHZ(CLK_KHZ)
+) 
+u5_timer
+(
+    .clk_i(clk_i), 
+    .rst_i(rst_i), 
+    .intr_systick_o(timer_intr_systick),
+    .intr_hires_o(timer_intr_hires),
+    .addr_i(timer_addr), 
+    .data_o(timer_data_i), 
+    .data_i(timer_data_o), 
+    .wr_i(timer_wr), 
+    .rd_i(timer_rd)
+);
 
-                // Store threshold for timeout (16-bit x 1ms)
-                watchdog_threshold    <= io_data_w[15:0];
-                watchdog_load         <= 1'b1;
-           end
-    `endif
-           
-           `SYS_CLK_COUNT : 
-                hr_timer_match <= io_data_w;
-                
-    `ifdef SOC_CONF_ENABLE_SPI_FLASH                
-           `SPI_PROM_CTRL : 
-           begin 
-               flash_cs_o <= io_data_w[0];
-           end
-           
-           `SPI_PROM_DATA : 
-           begin 
-               spi_flash_data_wr <= io_data_w[7:0];
-               spi_flash_start   <= 1'b1;
-           end
-    `endif           
-           default : 
-               ;
-           endcase
-   end
-end
-   
-// IO memory space READ handler
-always @ (posedge rst_i or posedge clk_i )
-begin 
-   if (rst_i == 1'b1) 
-   begin 
-       io_data_r    <= 32'h00000000;
-       uart_rd      <= 1'b0;
-   end
-   else 
-   begin 
-       uart_rd <= 1'b0;
-       
-       // Read cycle?
-       if (io_rd == 1'b1)
-           case (io_address[7:0])
-           
-           `CORE_ID : 
-                io_data_r <= CORE_ID;
-                
-           `UART_USR : 
-                io_data_r <= {27'h0000000, 1'b0, uart_tx_busy, 1'b0, 1'b0, uart_rx_avail};
-                
-           `UART_UDR : 
-           begin 
-               io_data_r <= {24'h000000,uart_rx_data};
-               uart_rd <= 1'b1;
-           end
-           
-           `TIMER_VAL : // (32-bit 1ms counter)
-                io_data_r <= systick_count;
-                
-           `IRQ_MASK_SET : 
-                io_data_r <= irq_mask;
-                
-           `IRQ_MASK_CLR : 
-                io_data_r <= irq_mask;
-                
-           `IRQ_STATUS : 
-                io_data_r <= (irq_status & irq_mask);
-                
-    `ifdef SOC_CONF_ENABLE_WATCHDOG                
-           `WATCHDOG_CTRL :
-                io_data_r <= {15'h000000, watchdog_expired, watchdog_counter};
-    `endif
-                
-           `SYS_CLK_COUNT : 
-                io_data_r <= hr_timer_cnt;
-                
-    `ifdef SOC_CONF_ENABLE_SPI_FLASH                   
-           `SPI_PROM_STAT : 
-                io_data_r <= {31'h00000000, spi_flash_busy};
-                
-           `SPI_PROM_DATA : 
-                io_data_r <= {24'h000000, spi_flash_data_rd};
-    `endif
-                    
-           default : 
-                io_data_r <= 32'h00000000;
-           endcase
-   end
-end
-   
-// SysTick Timer (1 ms resolution)
-always @ (posedge rst_i or posedge clk_i )
-begin 
-   if (rst_i == 1'b1) 
-   begin 
-       systick_count        <= 32'h00000000;
-       systick_clk_count    <= 32'h00000000;
-       systick_intr         <= 1'b0;
-   end
-   else 
-   begin 
-       systick_intr         <= 1'b0;
-       
-       if (systick_clk_count == CLK_KHZ) 
-       begin 
-           systick_count     <= (systick_count + 1);
-           systick_intr      <= 1'b1;
-           systick_clk_count <= 32'h00000000;
-       end
-       else 
-           systick_clk_count <= (systick_clk_count + 1);
-   end
-end
-
-// Watchdog
-`ifdef SOC_CONF_ENABLE_WATCHDOG
-    always @ (posedge rst_i or posedge clk_i )
-    begin 
-       if (rst_i == 1'b1) 
-       begin     
-           watchdog_counter     <= 16'h0000;
-           watchdog_expired     <= 1'b0;
-           watchdog_alt_reset   <= 1'b0;
-       end
-       else 
-       begin 
-
-           // On 1ms tick - decrement watchdog if enabled
-           if (systick_intr == 1'b1) 
-               if (watchdog_enable == 1'b1)
-               begin
-                    // Count down or expire if 0
-                    if (watchdog_counter != 16'h0000)
-                        watchdog_counter    <= (watchdog_counter - 1);
-                    else
-                    begin
-                        // Clear reset if already high
-                        watchdog_alt_reset    <= 1'b0;
-                        
-                        // If not already expired, start reset sequence
-                        if (watchdog_expired != 1'b1)
-                        begin
-                            watchdog_expired    <= 1'b1;
-                            watchdog_alt_reset  <= 1'b1;
-                            
-                            // Hold reset high for a couple of ms
-                            watchdog_counter    <= 16'h002;
-                        end
-                    end
-               end
-
-           // If watchdog reset signalled, reset counter with new threshold value           
-           if (watchdog_load == 1'b1)
-           begin
-                watchdog_counter <= watchdog_threshold;
-                watchdog_expired <= 1'b0;
-           end
-       end
-    end
-`endif
+intr_periph  
+#(
+    .EXTERNAL_INTERRUPTS(EXTERNAL_INTERRUPTS)
+) 
+u6_intr
+(
+    .clk_i(clk_i), 
+    .rst_i(rst_i), 
+    .intr_o(intr_in),
+    
+    .intr0_i(uart_intr),
+    .intr1_i(timer_intr_systick),
+    .intr2_i(timer_intr_hires),
+    .intr3_i(/*open*/),
+    .intr4_i(/*open*/),
+    .intr5_i(/*open*/),
+    .intr6_i(/*open*/),
+    .intr7_i(/*open*/),
+    .intr_ext_i(ext_intr_i),
+    
+    .addr_i(intr_addr), 
+    .data_o(intr_data_i), 
+    .data_i(intr_data_o), 
+    .wr_i(intr_wr), 
+    .rd_i(intr_rd)
+);
 
 //-----------------------------------------------------------------
 // Memory Map
@@ -668,9 +512,9 @@ end
 //----------------------------------------------------------------- 
 reg [31:0] v_mem_sel;
   
-always @ (posedge clk_i or posedge alt_reset )
+always @ (posedge clk_i or posedge rst_i )
 begin
-   if (alt_reset == 1'b1)
+   if (rst_i == 1'b1)
    begin 
        v_mem_sel = BOOT_VECTOR;
        r_mem_sel <= v_mem_sel[30:28];
@@ -680,20 +524,10 @@ begin
 end
    
 //-----------------------------------------------------------------
-// Combinatorial Logic
-//-----------------------------------------------------------------     
-assign intr_in      = ((irq_mask & irq_status) != 32'h00000000) ? 1'b1 : 1'b0;
-`ifdef SOC_CONF_ENABLE_WATCHDOG 
-assign alt_reset    = (rst_i | watchdog_alt_reset);
-`else
-assign alt_reset    = rst_i;
-`endif
-
-//-----------------------------------------------------------------
 // External Interface
 //-----------------------------------------------------------------  
 // Debug UART
-assign dbg_uart_data_o  = uart_tx_data;
-assign dbg_uart_wr_o    = uart_wr;
+assign dbg_uart_data_o  = uart_data_o[7:0];
+assign dbg_uart_wr_o    = (uart_wr != 4'b0000) ? 1'b1 : 1'b0;
 
 endmodule

@@ -39,7 +39,10 @@
 // Boston, MA  02111-1307  USA              
 //-----------------------------------------------------------------
 
+
 //-----------------------------------------------------------------
-// Configuration
+// Registers
 //-----------------------------------------------------------------
-`define SOC_CONF_ENABLE_SPI_FLASH
+`define SPI_MASTER_CTRL         8'h00
+`define SPI_MASTER_STAT         8'h00
+`define SPI_MASTER_DATA         8'h04

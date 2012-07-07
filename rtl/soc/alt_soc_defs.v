@@ -47,33 +47,22 @@
 `define MEM_REGION_CORE_IO      3'b010
 `define MEM_REGION_EXT_IO       3'b011
 
+`define INT_BASE                32'h00000000
+`define EXT_BASE                32'h10000000
+`define IO_BASE                 32'h20000000
+`define EXT_IO_BASE             32'h30000000
+
 //-----------------------------------------------------------------
-// I/O
+// Peripheral Base Addresses
 //-----------------------------------------------------------------
+`define UART_BASE               32'h20000000
+`define TIMER_BASE              32'h20000100
+`define INTR_BASE               32'h20000200
+`define SPI_FLASH_BASE          32'h20000300
 
-// General
-`define CORE_ID                 8'h00
-
-// Basic Peripherals
-`define UART_USR                8'h04
-`define UART_UDR                8'h08
-`define TIMER_VAL               8'h10
-`define IRQ_MASK_SET            8'h14
-`define IRQ_MASK_STATUS         8'h14
-`define IRQ_MASK_CLR            8'h18
-`define IRQ_STATUS              8'h1C
-    `define IRQ_SYSTICK             (0)
-    `define IRQ_UART_RX_AVAIL       (1)
-    `define IRQ_SW                  (2)
-    `define IRQ_PIT                 (6)
-    `define IRQ_EXT_FIRST           (8)
-    
-`define WATCHDOG_CTRL           8'h20
-    `define WATCHDOG_EXPIRED        (16)
-    
-`define SYS_CLK_COUNT           8'h60
-
-// SPI Configuration PROM
-`define SPI_PROM_CTRL           8'h70
-`define SPI_PROM_STAT           8'h70
-`define SPI_PROM_DATA           8'h74
+//-----------------------------------------------------------------
+// Interrupts
+//-----------------------------------------------------------------
+`define IRQ_UART_RX             0
+`define IRQ_TIMER_SYSTICK       1
+`define IRQ_TIMER_HIRES         2

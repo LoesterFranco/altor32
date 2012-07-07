@@ -17,37 +17,44 @@
 #define REG32				(volatile unsigned int*)
 
 //-----------------------------------------------------------------
-// I/O:
+// Peripheral Base Addresses
+//-----------------------------------------------------------------
+#define UART_BASE               0x20000000
+#define TIMER_BASE              0x20000100
+#define INTR_BASE               0x20000200
+#define SPI_FLASH_BASE          0x20000300
+
+//-----------------------------------------------------------------
+// Interrupts
+//-----------------------------------------------------------------
+#define IRQ_UART_RX             0
+#define IRQ_TIMER_SYSTICK       1
+#define IRQ_TIMER_HIRES         2
+
+//-----------------------------------------------------------------
+// Peripheral Registers
 //-----------------------------------------------------------------
 
-// General
-#define CORE_ID				(*(REG32 (IO_BASE + 0x0)))
+#define UART_USR			(*(REG32 (UART_BASE + 0x4)))
+#define UART_UDR			(*(REG32 (UART_BASE + 0x8)))
 
-// Basic Peripherals
-#define UART_USR			(*(REG32 (IO_BASE + 0x4)))
-#define UART_UDR			(*(REG32 (IO_BASE + 0x8)))
-#define TIMER_VAL			(*(REG32 (IO_BASE + 0x10)))
-#define IRQ_MASK_SET		(*(REG32 (IO_BASE + 0x14)))
-#define IRQ_MASK_STATUS		(*(REG32 (IO_BASE + 0x14)))
-#define IRQ_MASK_CLR		(*(REG32 (IO_BASE + 0x18)))
-#define IRQ_STATUS			(*(REG32 (IO_BASE + 0x1C)))
-	#define IRQ_SYSTICK			(0)
-	#define IRQ_UART_RX_AVAIL   (1)
-	#define IRQ_SW			    (2)
-	#define IRQ_PIT				(6)
+#define TIMER_VAL			(*(REG32 (TIMER_BASE + 0x0)))
+#define SYS_CLK_COUNT		(*(REG32 (TIMER_BASE + 0x4)))
+
+#define IRQ_MASK_SET		(*(REG32 (INTR_BASE + 0x00)))
+#define IRQ_MASK_STATUS		(*(REG32 (INTR_BASE + 0x04)))
+#define IRQ_MASK_CLR		(*(REG32 (INTR_BASE + 0x08)))
+#define IRQ_STATUS			(*(REG32 (INTR_BASE + 0x0C)))
+	#define IRQ_SYSTICK			(IRQ_TIMER_SYSTICK)
+	#define IRQ_UART_RX_AVAIL   (IRQ_UART_RX)
+    #define IRQ_PIT				(IRQ_TIMER_HIRES)
+	#define IRQ_SW			    (3)	
 	#define EXT_INT_OFFSET		(8)
 
-// [Optional] Watchdog
-#define WATCHDOG_CTRL		(*(REG32 (IO_BASE + 0x20)))
-	#define WATCHDOG_EXPIRED	(16)
-
-#define SYS_CLK_COUNT		(*(REG32 (IO_BASE + 0x60)))
-
-// SPI Configuration PROM
-#define SPI_PROM_CTRL		(*(REG32 (IO_BASE + 0x70)))
+#define SPI_PROM_CTRL		(*(REG32 (SPI_FLASH_BASE + 0x00)))
     #define SPI_PROM_CS			(1 << 0)
-#define SPI_PROM_STAT		(*(REG32 (IO_BASE + 0x70)))
+#define SPI_PROM_STAT		(*(REG32 (SPI_FLASH_BASE + 0x00)))
 	#define SPI_PROM_BUSY		(1 << 0)
-#define SPI_PROM_DATA		(*(REG32 (IO_BASE + 0x74)))
+#define SPI_PROM_DATA		(*(REG32 (SPI_FLASH_BASE + 0x04)))
 
 #endif 

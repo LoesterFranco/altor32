@@ -576,7 +576,7 @@ begin
        v_shift_imm          = {26'b00,v_imm[5:0]};
        
        // MTSPR/MFSPR operand
-       v_mxspr_imm          =  (v_reg_ra[15:0] | {5'b000000,v_mem_data_in[10:0]});
+       v_mxspr_imm          =  (v_reg_ra[15:0] | {5'b00000,v_mem_data_in[10:0]});
        
        // Zero result
        v_reg_result         = 32'h00000000;
