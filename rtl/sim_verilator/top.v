@@ -121,8 +121,8 @@ alt_soc
     .UART_BAUD(115200),
     .EXTERNAL_INTERRUPTS(1),
     .CORE_ID(32'h00000000),
-    .BOOT_VECTOR(32'h00002000),
-    .ISR_VECTOR(32'h0000203C)
+    .BOOT_VECTOR(32'h00000000),
+    .ISR_VECTOR(32'h00000000)
 ) 
 u1_cpu
 (
@@ -145,6 +145,14 @@ u1_cpu
     .int_mem_wr_o(int_mem_wr_o), 
     .int_mem_rd_o(/*open */),  
     .int_mem_pause_i(1'b0),
+    
+    // External Memory
+    .ext_mem_addr_o(/*open */), 
+    .ext_mem_data_o(/*open */), 
+    .ext_mem_data_i(32'h00000000), 
+    .ext_mem_wr_o(/*open */), 
+    .ext_mem_rd_o(/*open */), 
+    .ext_mem_pause_i(1'b0),
     
     // External I/O or Memory
     .ext_io_addr_o(/*open */), 

@@ -179,12 +179,14 @@ port map
     datab_o     => open
 );   
 
--- MPX CPU SOC
+-- CPU SOC
 U3_CPU: alt_soc
 generic map 
 (
     CLK_KHZ             => (CPU_MHZ * 1000),
     UART_BAUD           => 115200,
+    BOOT_VECTOR         => X"00000000",   
+    ISR_VECTOR          => X"00002000",      
     EXTERNAL_INTERRUPTS => 1
 )
 port map 
@@ -216,6 +218,14 @@ port map
     ext_io_wr_o         => io_wr,
     ext_io_rd_o         => io_rd,
     ext_io_pause_i      => '0',
+    
+    -- External Memory
+    ext_mem_addr_o      => open,
+    ext_mem_data_o      => open,
+    ext_mem_data_i      => X"00000000", 
+    ext_mem_wr_o        => open,
+    ext_mem_rd_o        => open,
+    ext_mem_pause_i     => '0',    
     
     -- SPI Flash
     flash_cs_o          => flash_cs,

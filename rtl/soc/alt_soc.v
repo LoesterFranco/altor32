@@ -70,6 +70,14 @@ module alt_soc
     int_mem_rd_o, 
     int_mem_pause_i, 
     
+    // External Memory
+    ext_mem_addr_o, 
+    ext_mem_data_o, 
+    ext_mem_data_i, 
+    ext_mem_wr_o, 
+    ext_mem_rd_o, 
+    ext_mem_pause_i,     
+    
     // External IO
     ext_io_addr_o, 
     ext_io_data_o, 
@@ -120,6 +128,12 @@ input [31:0]        int_mem_data_i /*verilator public*/;
 output [3:0]        int_mem_wr_o /*verilator public*/;
 output              int_mem_rd_o /*verilator public*/;
 input               int_mem_pause_i /*verilator public*/;
+output [31:0]       ext_mem_addr_o /*verilator public*/;
+output [31:0]       ext_mem_data_o /*verilator public*/;
+input [31:0]        ext_mem_data_i /*verilator public*/;
+output [3:0]        ext_mem_wr_o /*verilator public*/;
+output              ext_mem_rd_o /*verilator public*/;
+input               ext_mem_pause_i /*verilator public*/;
 output [31:0]       ext_io_addr_o /*verilator public*/;
 output [31:0]       ext_io_data_o /*verilator public*/;
 input [31:0]        ext_io_data_i /*verilator public*/;
@@ -137,34 +151,36 @@ output              dbg_uart_wr_o /*verilator public*/;
 //-----------------------------------------------------------------
 // Registers
 //-----------------------------------------------------------------
-reg [31:0]          v_irq_status;
-reg [2:0]           r_mem_sel;
 wire [31:0]         cpu_address;
 wire [3:0]          cpu_byte_we;
 wire                cpu_oe;
 wire [31:0]         cpu_data_w;
-reg [31:0]          cpu_data_r;
-reg                 cpu_pause;
+wire [31:0]         cpu_data_r;
+wire                cpu_pause;
 
-reg [31:0]          io_address;
-reg [31:0]          io_data_w;
+wire [31:0]         io_address;
+wire [31:0]         io_data_w;
 wire [31:0]         io_data_r;
-reg [3:0]           io_wr;
-reg                 io_rd;
+wire [3:0]          io_wr;
+wire                io_rd;
 
 // IRQ Status
 wire                intr_in;
 
 // Output Signals
 wire                uart_tx_o;
-reg [31:0]          int_mem_addr_o;
-reg [31:0]          int_mem_data_o;
-reg [3:0]           int_mem_wr_o;
-reg                 int_mem_rd_o;
-reg [31:0]          ext_io_addr_o;
-reg [31:0]          ext_io_data_o;
-reg [3:0]           ext_io_wr_o;
-reg                 ext_io_rd_o;
+wire [31:0]         int_mem_addr_o;
+wire [31:0]         int_mem_data_o;
+wire [3:0]          int_mem_wr_o;
+wire                int_mem_rd_o;
+wire [31:0]         ext_io_addr_o;
+wire [31:0]         ext_io_data_o;
+wire [3:0]          ext_io_wr_o;
+wire                ext_io_rd_o;
+wire [31:0]         ext_mem_addr_o;
+wire [31:0]         ext_mem_data_o;
+wire [3:0]          ext_mem_wr_o;
+wire                ext_mem_rd_o;
 wire                flash_cs_o;
 wire                flash_si_o;
 wire                flash_sck_o;
@@ -203,6 +219,10 @@ wire               intr_rd;
 
 // MPX CPU   
 altor32  
+#(
+    .BOOT_VECTOR(BOOT_VECTOR),
+    .ISR_VECTOR(ISR_VECTOR)
+) 
 u1_cpu
 (
     .clk_i(clk_i), 
@@ -218,6 +238,60 @@ u1_cpu
     .mem_rd_o(cpu_oe), 
     .mem_pause_i(cpu_pause), 
     .dbg_pc_o(dbg_pc_o)
+);
+
+mem_mux  
+#(
+    .BOOT_VECTOR(BOOT_VECTOR)
+) 
+u2_mux
+(
+    .clk_i(clk_i), 
+    .rst_i(rst_i), 
+    
+    // Input
+    .mem_addr_i(cpu_address), 
+    .mem_data_i(cpu_data_w), 
+    .mem_data_o(cpu_data_r), 
+    .mem_wr_i(cpu_byte_we), 
+    .mem_rd_i(cpu_oe),     
+    .mem_pause_o(cpu_pause), 
+    
+    // Outputs
+    .out0_addr_o(int_mem_addr_o), 
+    .out0_data_o(int_mem_data_o), 
+    .out0_data_i(int_mem_data_i), 
+    .out0_wr_o(int_mem_wr_o), 
+    .out0_rd_o(int_mem_rd_o), 
+    .out0_pause_i(int_mem_pause_i), 
+    
+    .out1_addr_o(ext_mem_addr_o), 
+    .out1_data_o(ext_mem_data_o), 
+    .out1_data_i(ext_mem_data_i), 
+    .out1_wr_o(ext_mem_wr_o), 
+    .out1_rd_o(ext_mem_rd_o), 
+    .out1_pause_i(ext_mem_pause_i), 
+    
+    .out2_addr_o(io_address), 
+    .out2_data_o(io_data_w), 
+    .out2_data_i(io_data_r), 
+    .out2_wr_o(io_wr), 
+    .out2_rd_o(io_rd), 
+    .out2_pause_i(1'b0),
+    
+    .out3_addr_o(ext_io_addr_o), 
+    .out3_data_o(ext_io_data_o), 
+    .out3_data_i(ext_io_data_i), 
+    .out3_wr_o(ext_io_wr_o), 
+    .out3_rd_o(ext_io_rd_o), 
+    .out3_pause_i(ext_io_pause_i),
+    
+    .out4_addr_o(/*open*/), 
+    .out4_data_o(/*open*/), 
+    .out4_data_i(32'h00000000), 
+    .out4_wr_o(/*open*/), 
+    .out4_rd_o(/*open*/), 
+    .out4_pause_i(1'b0)    
 );
 
 // Peripheral Interconnect
@@ -387,142 +461,6 @@ u6_intr
     .rd_i(intr_rd)
 );
 
-//-----------------------------------------------------------------
-// Memory Map
-//-----------------------------------------------------------------   
-always @ (cpu_address or cpu_byte_we or cpu_oe or cpu_data_w )
-begin 
-   case (cpu_address[30:28])
-   
-   // Block RAM
-   `MEM_REGION_INTERNAL : 
-   begin 
-       int_mem_addr_o       = cpu_address;
-       int_mem_wr_o         = cpu_byte_we;
-       int_mem_rd_o         = cpu_oe;
-       int_mem_data_o       = cpu_data_w;
-       
-       io_address           = 32'h00000000;
-       io_wr                = 4'b0000;
-       io_rd                = 1'b0;
-       io_data_w            = 32'h00000000;
-       
-       ext_io_addr_o        = 32'h00000000;
-       ext_io_wr_o          = 4'b0000;
-       ext_io_rd_o          = 1'b0;
-       ext_io_data_o        = 32'h00000000;
-   end
-   
-   // Core I/O peripherals
-   `MEM_REGION_CORE_IO : 
-   begin 
-       io_address           = cpu_address;
-       io_wr                = cpu_byte_we;
-       io_rd                = cpu_oe;
-       io_data_w            = cpu_data_w;
-       
-       int_mem_addr_o       = 32'h00000000;
-       int_mem_wr_o         = 4'b0000;
-       int_mem_rd_o         = 1'b0;
-       int_mem_data_o       = 32'h00000000;
-       
-       ext_io_addr_o        = 32'h00000000;
-       ext_io_wr_o          = 4'b0000;
-       ext_io_rd_o          = 1'b0;
-       ext_io_data_o        = 32'h00000000;
-   end
-   
-   // Extended I/O peripherals   
-   `MEM_REGION_EXT_IO : 
-   begin 
-       ext_io_addr_o        = cpu_address;
-       ext_io_wr_o          = cpu_byte_we;
-       ext_io_rd_o          = cpu_oe;
-       ext_io_data_o        = cpu_data_w;
-       
-       int_mem_addr_o       = 32'h00000000;
-       int_mem_wr_o         = 4'b0000;
-       int_mem_rd_o         = 1'b0;
-       int_mem_data_o       = 32'h00000000;
-       
-       io_address           = 32'h00000000;
-       io_wr                = 4'b0000;
-       io_rd                = 1'b0;
-       io_data_w            = 32'h00000000;
-   end
-      
-   default : 
-   begin 
-       io_address           = 32'h00000000;
-       io_wr                = 4'b0000;
-       io_rd                = 1'b0;
-       io_data_w            = 32'h00000000;
-       
-       int_mem_addr_o       = 32'h00000000;
-       int_mem_wr_o         = 4'b0000;
-       int_mem_rd_o         = 1'b0;
-       int_mem_data_o       = 32'h00000000;
-       
-       ext_io_addr_o        = 32'h00000000;
-       ext_io_wr_o          = 4'b0000;
-       ext_io_rd_o          = 1'b0;
-       ext_io_data_o        = 32'h00000000;
-   end
-   endcase
-end
-   
-//-----------------------------------------------------------------
-// Read Port
-//-----------------------------------------------------------------   
-always @ (r_mem_sel or int_mem_data_i or io_data_r or ext_io_data_i or int_mem_pause_i or ext_io_pause_i)
-begin 
-   case (r_mem_sel)
-   
-   // Block RAM
-   `MEM_REGION_INTERNAL : 
-   begin 
-       cpu_data_r   = int_mem_data_i;
-       cpu_pause    = int_mem_pause_i;
-   end
-     
-   // Core I/O peripherals
-   `MEM_REGION_CORE_IO : 
-   begin 
-       cpu_data_r   = io_data_r;
-       cpu_pause    = 1'b0;
-   end
-   
-   // Extended I/O peripherals
-   `MEM_REGION_EXT_IO : 
-   begin 
-       cpu_data_r   = ext_io_data_i;
-       cpu_pause    = ext_io_pause_i;
-   end
-   
-   default : 
-   begin 
-       cpu_data_r   = 32'h00000000;
-       cpu_pause    = 1'b0;
-   end
-   endcase
-end
-   
-//-----------------------------------------------------------------
-// Registered device select
-//----------------------------------------------------------------- 
-reg [31:0] v_mem_sel;
-  
-always @ (posedge clk_i or posedge rst_i )
-begin
-   if (rst_i == 1'b1)
-   begin 
-       v_mem_sel = BOOT_VECTOR;
-       r_mem_sel <= v_mem_sel[30:28];
-   end
-   else 
-       r_mem_sel <= cpu_address[30:28];
-end
-   
 //-----------------------------------------------------------------
 // External Interface
 //-----------------------------------------------------------------  
