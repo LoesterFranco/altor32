@@ -4,7 +4,7 @@ TEST_IMAGE  ?= test_image.bin
 SIMARGS     ?=
 
 # Default core to simulate
-RTL_CORE    ?= core_simple
+RTL_CORE    ?= core_pipelined
 
 # Waveform trace disabled by default
 TRACE?= 0
