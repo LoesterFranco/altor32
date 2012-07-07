@@ -72,7 +72,8 @@ module altor32
 //-----------------------------------------------------------------
 // Params
 //-----------------------------------------------------------------
-parameter [31:0]    BOOT_VECTOR     = 32'h00000100;
+parameter [31:0]    BOOT_VECTOR     = 32'h00000000;
+parameter [31:0]    ISR_VECTOR      = 32'h00000000;
 
 //-----------------------------------------------------------------
 // I/O
@@ -298,8 +299,8 @@ always @ (posedge clk_i or posedge rst_i)
 begin 
    if (rst_i == 1'b1) 
    begin 
-       r_pc                 <= BOOT_VECTOR;
-       r_pc_next            <= BOOT_VECTOR;
+       r_pc                 <= BOOT_VECTOR + `VECTOR_RESET;
+       r_pc_next            <= BOOT_VECTOR + `VECTOR_RESET;
        
        r_epc                <= 32'h00000000;
        r_sr                 <= 32'h00000000;
@@ -478,7 +479,7 @@ begin
                        begin 
                            fault_o <= 1'b1;
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_ILLEGAL_INST;
+                           v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                        end
                    endcase
                end
@@ -581,7 +582,7 @@ begin
                        begin 
                            fault_o <= 1'b1;
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_ILLEGAL_INST;
+                           v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                        end
                    endcase          
                end              
@@ -611,7 +612,7 @@ begin
                        begin 
                            fault_o <= 1'b1;
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_ILLEGAL_INST;
+                           v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                        end
                    endcase          
                end                 
@@ -675,7 +676,7 @@ begin
                        begin 
                            fault_o <= 1'b1;
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_ILLEGAL_INST;
+                           v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                        end
                    endcase          
                end
@@ -884,7 +885,7 @@ begin
                        begin 
                            fault_o <= 1'b1;
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_ILLEGAL_INST;
+                           v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                        end
                    endcase          
                end
@@ -929,13 +930,13 @@ begin
                        `INST_OR32_SYS: // l.sys
                        begin 
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_SYSCALL;
+                           v_vector = ISR_VECTOR + `VECTOR_SYSCALL;
                        end
                        
                        `INST_OR32_TRAP: // l.trap
                        begin 
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_TRAP;
+                           v_vector = ISR_VECTOR + `VECTOR_TRAP;
                            break_o <= 1'b1;
                        end
                        
@@ -943,7 +944,7 @@ begin
                        begin 
                            fault_o <= 1'b1;
                            v_exception = 1'b1;
-                           v_vector = `VECTOR_ILLEGAL_INST;
+                           v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                        end
                    endcase             
                end
@@ -960,7 +961,7 @@ begin
                begin 
                    fault_o <= 1'b1;
                    v_exception = 1'b1;
-                   v_vector = `VECTOR_ILLEGAL_INST;
+                   v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                end
            endcase
            
