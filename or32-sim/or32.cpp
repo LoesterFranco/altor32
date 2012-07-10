@@ -575,7 +575,7 @@ void OR32::Execute(void)
                         r_sr &=~OR32_SR_F_BIT;
                 break;
                 case INST_OR32_SFGEUI: // l.sfgeui
-                    if (v_reg_ra >= v_imm_uint32)
+                    if (v_reg_ra >= v_imm_int32)
                         r_sr |= OR32_SR_F_BIT;
                     else
                         r_sr &=~OR32_SR_F_BIT;
@@ -599,7 +599,7 @@ void OR32::Execute(void)
                         r_sr &=~OR32_SR_F_BIT;
                 break;
                 case INST_OR32_SFGTUI: // l.sfgtui
-                    if (v_reg_ra > v_imm_uint32)
+                    if (v_reg_ra > v_imm_int32)
                         r_sr |= OR32_SR_F_BIT;
                     else
                         r_sr &=~OR32_SR_F_BIT;
@@ -623,7 +623,7 @@ void OR32::Execute(void)
                         r_sr &=~OR32_SR_F_BIT;
                 break;
                 case INST_OR32_SFLEUI: // l.sfleui
-                    if (v_reg_ra <= v_imm_uint32)
+                    if (v_reg_ra <= v_imm_int32)
                         r_sr |= OR32_SR_F_BIT;
                     else
                         r_sr &=~OR32_SR_F_BIT;
@@ -647,7 +647,7 @@ void OR32::Execute(void)
                         r_sr &=~OR32_SR_F_BIT;
                 break;
                 case INST_OR32_SFLTUI: // l.sfltui
-                    if (v_reg_ra < v_imm_uint32)
+                    if (v_reg_ra < v_imm_int32)
                         r_sr |= OR32_SR_F_BIT;
                     else
                         r_sr &=~OR32_SR_F_BIT;
