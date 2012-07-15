@@ -1,7 +1,6 @@
 //-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 //                                     AltOR32 
-//                         Alternative Lightweight OpenRisc 
+//                         Alternative Lightweight OpenRISC 
 //                                Ultra-Embedded.com
 //                               Copyright 2011 - 2012
 //
@@ -13,22 +12,21 @@
 //  applications.
 //-----------------------------------------------------------------------------
 //
-// This file is part of AltOR32 OpenRisc Simulator.
+// This file is part of AltOR32 Alternative Lightweight OpenRISC project.
 //
-// AltOR32 OpenRisc Simulator is free software; you can redistribute it and/or 
-// modify it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
+// AltOR32 is free software; you can redistribute it and/or modify it under 
+// the terms of the GNU General Public License as published by the Free Software 
+// Foundation; either version 2 of the License, or (at your option) any later 
+// version.
 //
-// AltOR32 OpenRisc Simulator is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// AltOR32 is distributed in the hope that it will be useful, but WITHOUT ANY 
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more 
+// details.
 //
 // You should have received a copy of the GNU General Public License
-// along with AltOR32 OpenRisc Simulator; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//-----------------------------------------------------------------------------
+// along with AltOR32; if not, write to the Free Software Foundation, Inc., 
+// 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------------------
 #include "assert.h"
 #include "mem_map.h"
@@ -39,31 +37,31 @@
 //-------------------------------------------------------------
 
 // Chip select control
-#define SPIFLASH_CS_HIGH		SPI_PROM_CTRL = SPI_PROM_CS
-#define SPIFLASH_CS_LOW			SPI_PROM_CTRL = 0
+#define SPIFLASH_CS_HIGH            SPI_PROM_CTRL = SPI_PROM_CS
+#define SPIFLASH_CS_LOW             SPI_PROM_CTRL = 0
 
 // ID addresses
-#define SPIFLASH_MAN_ADDR		0x00
-#define SPIFLASH_DEV_ADDR		0x01
+#define SPIFLASH_MAN_ADDR           0x00
+#define SPIFLASH_DEV_ADDR           0x01
 
 // Instructions
-#define SPIFLASH_OP_WRSR		0x01
-#define SPIFLASH_OP_PROGRAM		0x02
-#define SPIFLASH_OP_READ		0x03
-#define SPIFLASH_OP_RDSR		0x05
-    #define SPIFLASH_STAT_BUSY		(1 << 0)
-    #define SPIFLASH_STAT_WEL		(1 << 1)
-    #define SPIFLASH_STAT_BP0		(1 << 2)
-    #define SPIFLASH_STAT_BP1		(1 << 3)
-    #define SPIFLASH_STAT_BP2		(1 << 4)
-    #define SPIFLASH_STAT_BP3		(1 << 5)
-    #define SPIFLASH_STAT_AAI		(1 << 6)
-    #define SPIFLASH_STAT_BPL		(1 << 7)
-#define SPIFLASH_OP_WREN		0x06
-#define SPIFLASH_OP_ERASESECTOR	0x20
-#define SPIFLASH_OP_ERASECHIP	0x60
-#define SPIFLASH_OP_RDID		0x9F
-#define SPIFLASH_OP_AAIP		0xAD
+#define SPIFLASH_OP_WRSR            0x01
+#define SPIFLASH_OP_PROGRAM         0x02
+#define SPIFLASH_OP_READ            0x03
+#define SPIFLASH_OP_RDSR            0x05
+    #define SPIFLASH_STAT_BUSY          (1 << 0)
+    #define SPIFLASH_STAT_WEL           (1 << 1)
+    #define SPIFLASH_STAT_BP0           (1 << 2)
+    #define SPIFLASH_STAT_BP1           (1 << 3)
+    #define SPIFLASH_STAT_BP2           (1 << 4)
+    #define SPIFLASH_STAT_BP3           (1 << 5)
+    #define SPIFLASH_STAT_AAI           (1 << 6)
+    #define SPIFLASH_STAT_BPL           (1 << 7)
+#define SPIFLASH_OP_WREN            0x06
+#define SPIFLASH_OP_ERASESECTOR     0x20
+#define SPIFLASH_OP_ERASECHIP       0x60
+#define SPIFLASH_OP_RDID            0x9F
+#define SPIFLASH_OP_AAIP            0xAD
 
 typedef enum
 {
@@ -206,7 +204,7 @@ static void spiflash_programpage(unsigned long address, unsigned char *data, uns
 }
 
 //-------------------------------------------------------------
-//						External API
+//                        External API
 //-------------------------------------------------------------
 
 //-------------------------------------------------------------

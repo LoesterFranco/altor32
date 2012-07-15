@@ -1,7 +1,6 @@
 //-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
 //                                     AltOR32 
-//                         Alternative Lightweight OpenRisc 
+//                         Alternative Lightweight OpenRISC 
 //                                Ultra-Embedded.com
 //                               Copyright 2011 - 2012
 //
@@ -13,22 +12,21 @@
 //  applications.
 //-----------------------------------------------------------------------------
 //
-// This file is part of AltOR32 OpenRisc Simulator.
+// This file is part of AltOR32 Alternative Lightweight OpenRISC project.
 //
-// AltOR32 OpenRisc Simulator is free software; you can redistribute it and/or 
-// modify it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
+// AltOR32 is free software; you can redistribute it and/or modify it under 
+// the terms of the GNU General Public License as published by the Free Software 
+// Foundation; either version 2 of the License, or (at your option) any later 
+// version.
 //
-// AltOR32 OpenRisc Simulator is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// AltOR32 is distributed in the hope that it will be useful, but WITHOUT ANY 
+// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
+// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more 
+// details.
 //
 // You should have received a copy of the GNU General Public License
-// along with AltOR32 OpenRisc Simulator; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//-----------------------------------------------------------------------------
+// along with AltOR32; if not, write to the Free Software Foundation, Inc., 
+// 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------------------
 #include <string.h>
 #include "xmodem.h"
@@ -37,16 +35,16 @@
 //-----------------------------------------------------------------
 // Defines
 //-----------------------------------------------------------------
-#define XMODEM_HDR_SIZE		6
+#define XMODEM_HDR_SIZE        6
 
 // Control character codes
-#define SOH			0x01
-#define STX			0x02
-#define EOT			0x04
-#define ACK			0x06
-#define NAK			0x15
-#define CAN			0x18
-#define CTRLZ		0x1A
+#define SOH            0x01
+#define STX            0x02
+#define EOT            0x04
+#define ACK            0x06
+#define NAK            0x15
+#define CAN            0x18
+#define CTRLZ          0x1A
 
 #define XMODEM_CRC_REQ 'C'
 
@@ -235,7 +233,7 @@ int xmodem_receive( int (*write)(unsigned char* buffer, int size) )
 }
 //-----------------------------------------------------------------
 // calc_crc_16: Calculate 16 bit CRC used by XModem(CRC)
-//				Polynomial x^16 + x^12 + x^5 + 1 (0x1021)
+//                Polynomial x^16 + x^12 + x^5 + 1 (0x1021)
 //-----------------------------------------------------------------
 static unsigned short calc_crc_16(unsigned char *data, int length)
 {
@@ -268,7 +266,7 @@ static unsigned char calc_checksum(unsigned char *data, int length)
 {
     unsigned char sum = 0;
     
-    while (length)	
+    while (length)    
     {
         sum += *data++;
         length--;
