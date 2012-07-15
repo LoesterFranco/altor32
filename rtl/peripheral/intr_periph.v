@@ -216,7 +216,7 @@ begin
                 data_o <= irq_mask;
                 
            `IRQ_STATUS : 
-                data_o <= (irq_status & irq_mask);
+                data_o <= irq_status;
              
            default : 
                 data_o <= 32'h00000000;

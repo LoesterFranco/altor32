@@ -104,17 +104,6 @@ module soc_pif
     periph7_wr_o, 
     periph7_rd_o                            
 );
-
-//-----------------------------------------------------------------
-// Params
-//-----------------------------------------------------------------
-parameter  [31:0]   CLK_KHZ             = 12288;
-parameter  [31:0]   UART_BAUD           = 115200;
-parameter  [31:0]   SPI_FLASH_CLK_KHZ   = (12288/2);
-parameter  [31:0]   EXTERNAL_INTERRUPTS = 1;
-parameter           CORE_ID             = 0;
-parameter           BOOT_VECTOR         = 0;
-parameter           ISR_VECTOR          = 0;
     
 //-----------------------------------------------------------------
 // I/O

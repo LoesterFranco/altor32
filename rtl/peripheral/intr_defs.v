@@ -44,7 +44,6 @@
 // Registers
 //-----------------------------------------------------------------
 `define IRQ_MASK_SET            8'h00
-`define IRQ_MASK_STATUS         8'h04
-`define IRQ_MASK_CLR            8'h08
-`define IRQ_STATUS              8'h0C
+`define IRQ_MASK_CLR            8'h04
+`define IRQ_STATUS              8'h08
     `define IRQ_EXT_FIRST           (8)

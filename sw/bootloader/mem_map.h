@@ -41,10 +41,10 @@
 #define TIMER_VAL			(*(REG32 (TIMER_BASE + 0x0)))
 #define SYS_CLK_COUNT		(*(REG32 (TIMER_BASE + 0x4)))
 
+#define IRQ_MASK		    (*(REG32 (INTR_BASE + 0x00)))
 #define IRQ_MASK_SET		(*(REG32 (INTR_BASE + 0x00)))
-#define IRQ_MASK_STATUS		(*(REG32 (INTR_BASE + 0x04)))
-#define IRQ_MASK_CLR		(*(REG32 (INTR_BASE + 0x08)))
-#define IRQ_STATUS			(*(REG32 (INTR_BASE + 0x0C)))
+#define IRQ_MASK_CLR		(*(REG32 (INTR_BASE + 0x04)))
+#define IRQ_STATUS			(*(REG32 (INTR_BASE + 0x08)))
 	#define IRQ_SYSTICK			(IRQ_TIMER_SYSTICK)
 	#define IRQ_UART_RX_AVAIL   (IRQ_UART_RX)
     #define IRQ_PIT				(IRQ_TIMER_HIRES)
