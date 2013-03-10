@@ -1,9 +1,8 @@
 //-----------------------------------------------------------------
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
-//                            V0.1
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -14,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -36,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
@@ -70,7 +69,7 @@ module gpio_periph
 //-----------------------------------------------------------------
 // Params
 //-----------------------------------------------------------------
-parameter               GPIO_WIDTH      = 8;
+parameter               GPIO_WIDTH             = 8;
     
 //-----------------------------------------------------------------
 // I/O
@@ -106,7 +105,24 @@ reg [GPIO_WIDTH-1:0]    gpio_int_polarity;
 reg [GPIO_WIDTH-1:0]    gpio_int_edge;
 
 //-----------------------------------------------------------------
-// Implementation
+// Resync inputs
+//-----------------------------------------------------------------  
+always @ (posedge rst_i or posedge clk_i )
+begin 
+   if (rst_i == 1'b1) 
+   begin 
+        gpio_in_sync    <= {(GPIO_WIDTH){1'b0}};
+        gpio_in         <= {(GPIO_WIDTH){1'b0}};
+   end
+   else 
+   begin 
+        gpio_in_sync    <= gpio_i;
+        gpio_in         <= gpio_in_sync;
+   end
+end
+
+//-----------------------------------------------------------------
+// GPIO interrupt handling
 //-----------------------------------------------------------------  
 reg v_gpio_in;
 reg v_intr_out;
@@ -115,15 +131,11 @@ always @ (posedge rst_i or posedge clk_i )
 begin 
    if (rst_i == 1'b1) 
    begin 
-        gpio_in         <= {(GPIO_WIDTH){1'b0}};
         gpio_in_last    <= {(GPIO_WIDTH){1'b0}};
         intr_o          <= 1'b0;
-        gpio_in_sync    <= {(GPIO_WIDTH){1'b0}};     
    end
    else 
-   begin 
-        gpio_in_sync    <= gpio_i;
-        gpio_in         <= gpio_in_sync;
+   begin
         gpio_in_last    <= gpio_in;
        
         v_intr_out      = 1'b0; 
@@ -267,7 +279,7 @@ begin
 end
       
 //-----------------------------------------------------------------
-// Combinatorial Logic
+// Assignments
 //-----------------------------------------------------------------     
 assign gpio_o           = gpio_out;
 assign gpio_out_en_o    = gpio_out_en;

@@ -1,35 +1,42 @@
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-//                          AltOR32 OpenRisc Simulator
-//                                    V0.1
-//                              Ultra-Embedded.com
-//                            Copyright 2011 - 2012
+//-----------------------------------------------------------------
+//                           AltOR32 
+//              Alternative Lightweight OpenRisc 
+//                     Ultra-Embedded.com
+//                   Copyright 2011 - 2013
 //
-//                         Email: admin@ultra-embedded.com
+//               Email: admin@ultra-embedded.com
 //
-//                                License: GPL
-//  Please contact the above address if you would like a version of this 
-//  software with a more permissive license for use in closed source commercial 
-//  applications.
-//-----------------------------------------------------------------------------
+//                       License: LGPL
 //
-// This file is part of AltOR32 OpenRisc Simulator.
+// If you would like a version with a different license for use 
+// in commercial projects please contact the above email address 
+// for more details.
+//-----------------------------------------------------------------
 //
-// AltOR32 OpenRisc Simulator is free software; you can redistribute it and/or 
-// modify it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
-// AltOR32 OpenRisc Simulator is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// This source file may be used and distributed without         
+// restriction provided that this copyright statement is not    
+// removed from the file and that any derivative work contains  
+// the original copyright notice and the associated disclaimer. 
 //
-// You should have received a copy of the GNU General Public License
-// along with AltOR32 OpenRisc Simulator; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
+// This source file is free software; you can redistribute it   
+// and/or modify it under the terms of the GNU Lesser General   
+// Public License as published by the Free Software Foundation; 
+// either version 2.1 of the License, or (at your option) any   
+// later version.                                               
+//
+// This source is distributed in the hope that it will be       
+// useful, but WITHOUT ANY WARRANTY; without even the implied   
+// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+// PURPOSE.  See the GNU Lesser General Public License for more 
+// details.                                                     
+//
+// You should have received a copy of the GNU Lesser General    
+// Public License along with this source; if not, write to the 
+// Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
+// Boston, MA  02111-1307  USA
+//-----------------------------------------------------------------
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -46,9 +53,9 @@
 //-----------------------------------------------------------------
 // Defines
 //-----------------------------------------------------------------
-#define DEFAULT_MEM_BASE            0x00000000
+#define DEFAULT_MEM_BASE            0x10000000
 #define DEFAULT_MEM_SIZE            (10 << 20)
-#define DEFAULT_LOAD_ADDR           0x00000000
+#define DEFAULT_LOAD_ADDR           0x10000000
 #define DEFAULT_FILENAME            NULL
 
 //-----------------------------------------------------------------
@@ -64,16 +71,18 @@ int main(int argc, char *argv[])
     unsigned int loadAddr = DEFAULT_LOAD_ADDR;
     unsigned int memBase = DEFAULT_MEM_BASE;
     unsigned int memSize = DEFAULT_MEM_SIZE;
-    unsigned int startAddr = VECTOR_RESET;
+    unsigned int startAddr = DEFAULT_MEM_BASE + VECTOR_RESET;
     int max_cycles = -1;
+    bool delay_slot_enabled = true;
     char *filename = DEFAULT_FILENAME;
     int help = 0;
     int trace = 0;
     unsigned int trace_mask = 1;
     int exitcode = 0;
+    int mem_trace = 0;
     OR32 *sim = NULL;
 
-    while ((c = getopt (argc, argv, "tv:l:b:s:f:c:x:")) != -1)
+    while ((c = getopt (argc, argv, "tv:l:b:s:f:c:x:nm")) != -1)
     {
         switch(c)
         {
@@ -101,6 +110,12 @@ int main(int argc, char *argv[])
             case 'c':
                  max_cycles = (int)strtoul(optarg, NULL, 0);
                  break;
+            case 'n':
+                 delay_slot_enabled = false;
+                 break;
+            case 'm':
+                 mem_trace = 1;
+                 break;
             case '?':
             default:
                 help = 1;   
@@ -119,15 +134,22 @@ int main(int argc, char *argv[])
         fprintf (stderr,"-l 0xnnnn       = Executable load address\n");     
         fprintf (stderr,"-x 0xnnnn       = Executable boot address\n");     
         fprintf (stderr,"-c nnnn         = Max instructions to execute\n");
+        fprintf (stderr,"-n              = No delay slot\n");
  
         exit(-1);
     }
 
-    sim = new OR32(memBase, memSize);
+    sim = new OR32(memBase, memSize, delay_slot_enabled);
     sim->Reset(startAddr);
 
     if (trace)
         sim->EnableTrace(trace_mask);
+
+    if (mem_trace)
+    {
+        printf("Memory trace enabled\n");
+        sim->EnableMemoryTrace();
+    }
 
     FILE *f = fopen(filename, "rb");
     if (f)
@@ -170,11 +192,10 @@ int main(int argc, char *argv[])
         }
         // Show execution stats
         sim->DumpStats();
-        
-        if (sim->GetBreak())
-        {
-            printf("Exit code = %d\n", 0);
-        }
+
+        // Fault occurred?
+        if (sim->GetFault())
+            exitcode = 1;
     }
     else
         fprintf (stderr,"Error: Could not open %s\n", filename);

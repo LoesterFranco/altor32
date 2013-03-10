@@ -17,7 +17,7 @@
 class OR32
 {
 public:
-                        OR32(unsigned int baseAddr, unsigned int len);
+                        OR32(unsigned int baseAddr, unsigned int len, bool delay_slot = true);
     virtual             ~OR32();
 
     bool                Load(unsigned int startAddr, unsigned char *data, int len);
@@ -33,7 +33,9 @@ public:
     TRegister           GetRegister(int r) { return (r < REGISTERS) ? r_gpr[r] : 0; }
 
     void                EnableTrace(unsigned mask)  { Trace = mask; }
+    void                EnableMemoryTrace(void);
 
+    void                ResetStats(void);
     void                DumpStats(void);
 
 protected:  
@@ -46,7 +48,7 @@ protected:
     virtual void        PeripheralReset(void) { }
     virtual void        PeripheralClock(void) { }
     virtual TRegister   PeripheralAccess(TAddress addr, TRegister data_in, TRegister wr, TRegister rd) { return 0; }
-    virtual bool	    PeripheralInterrupt(void) { return false; }
+    virtual bool        PeripheralInterrupt(void) { return false; }
 
 protected:  
     // Execution monitoring
@@ -84,6 +86,9 @@ private:
     TMemory             *Mem;
     TAddress            MemBase;
     unsigned int        MemSize;
+    TRegister           *MemInstHits;
+    TRegister           *MemReadHits;
+    TRegister           *MemWriteHits;
 
     // Memory access
     TAddress            mem_addr;
@@ -92,6 +97,7 @@ private:
     TRegister           mem_offset;
     TRegister           mem_wr;
     TRegister           mem_rd;
+    TRegister           mem_ifetch;
 
     // Status
     int                 Fault;
@@ -99,9 +105,15 @@ private:
     TRegister           BreakValue;
     unsigned            Trace;
     int                 Cycle;
+    bool                DelaySlotEnabled;
+    bool                TraceMemory;
 
     // Stats
     int                 StatsMem;
+    int                 StatsMemWrites;
+    int                 StatsMulu;
+    int                 StatsMul;
+    int                 StatsMarkers;
     int                 StatsInstructions;
     int                 StatsNop;
     int                 StatsBranches;

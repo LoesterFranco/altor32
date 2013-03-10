@@ -42,7 +42,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "or32_isa.h"
-#include "or32_inst_dump.h"
+#include "inst_dump.h"
 
 //-----------------------------------------------------------------
 // or32_instruction_to_string: Decode instruction to string

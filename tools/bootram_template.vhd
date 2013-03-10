@@ -1,4 +1,43 @@
 -------------------------------------------------------------------
+--                           AltOR32 
+--              Alternative Lightweight OpenRisc 
+--                     Ultra-Embedded.com
+--                   Copyright 2011 - 2013
+--
+--               Email: admin@ultra-embedded.com
+--
+--                       License: LGPL
+--
+-- If you would like a version with a different license for use 
+-- in commercial projects please contact the above email address 
+-- for more details.
+-------------------------------------------------------------------
+--
+-- Copyright (C) 2011 - 2013 Ultra-Embedded.com
+--
+-- This source file may be used and distributed without         
+-- restriction provided that this copyright statement is not    
+-- removed from the file and that any derivative work contains  
+-- the original copyright notice and the associated disclaimer. 
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, write to the 
+-- Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
+-- Boston, MA  02111-1307  USA
+-------------------------------------------------------------------
+-------------------------------------------------------------------
 -- This file was derived from the Plasma project by Steve Rhoads.
 -- It has been modified to support dual port block RAM and contains
 -- the FPGA Bootloader image.
@@ -25,26 +64,26 @@ use UNISIM.vcomponents.all;
 entity ram is
 generic
 (
-	--Number of 8KB blocks of internal RAM, up to 64KB (1 to 8)
-	block_count : integer := 1
+    --Number of 8KB blocks of internal RAM, up to 64KB (1 to 8)
+    block_count : integer := 1
 ); 
 port
 (
-	-- Port A
-	clka_i              : in std_logic;
-	ena_i				: in std_logic;
-	wea_i				: in std_logic_vector(3 downto 0);
-	addra_i				: in std_logic_vector(31 downto 2);
-	dataa_i				: in std_logic_vector(31 downto 0);
-	dataa_o				: out std_logic_vector(31 downto 0);
+    -- Port A
+    clka_i              : in std_logic;
+    ena_i                : in std_logic;
+    wea_i                : in std_logic_vector(3 downto 0);
+    addra_i                : in std_logic_vector(31 downto 2);
+    dataa_i                : in std_logic_vector(31 downto 0);
+    dataa_o                : out std_logic_vector(31 downto 0);
 
-	-- Port B
-	clkb_i              : in std_logic;
-	enb_i				: in std_logic;
-	web_i				: in std_logic_vector(3 downto 0);
-	addrb_i				: in std_logic_vector(31 downto 2);
-	datab_i				: in std_logic_vector(31 downto 0);
-	datab_o				: out std_logic_vector(31 downto 0)
+    -- Port B
+    clkb_i              : in std_logic;
+    enb_i                : in std_logic;
+    web_i                : in std_logic_vector(3 downto 0);
+    addrb_i                : in std_logic_vector(31 downto 2);
+    datab_i                : in std_logic_vector(31 downto 0);
+    datab_o                : out std_logic_vector(31 downto 0)
 );
 end;
 
@@ -82,59 +121,59 @@ begin
 -----------------------------------------------
 -- Port A
 -----------------------------------------------
-block_a_enable <=	"00000001" when (ena_i='1') and (block_a_sel="000") else 
-					"00000010" when (ena_i='1') and (block_a_sel="001") else 
-					"00000100" when (ena_i='1') and (block_a_sel="010") else 
-					"00001000" when (ena_i='1') and (block_a_sel="011") else 
-					"00010000" when (ena_i='1') and (block_a_sel="100") else 
-					"00100000" when (ena_i='1') and (block_a_sel="101") else 
-					"01000000" when (ena_i='1') and (block_a_sel="110") else 
-					"10000000" when (ena_i='1') and (block_a_sel="111") else
-					"00000000";
+block_a_enable <=    "00000001" when (ena_i='1') and (block_a_sel="000") else 
+                    "00000010" when (ena_i='1') and (block_a_sel="001") else 
+                    "00000100" when (ena_i='1') and (block_a_sel="010") else 
+                    "00001000" when (ena_i='1') and (block_a_sel="011") else 
+                    "00010000" when (ena_i='1') and (block_a_sel="100") else 
+                    "00100000" when (ena_i='1') and (block_a_sel="101") else 
+                    "01000000" when (ena_i='1') and (block_a_sel="110") else 
+                    "10000000" when (ena_i='1') and (block_a_sel="111") else
+                    "00000000";
 
 process (clka_i, block_a_sel) is
 begin
-	if rising_edge(clka_i) then 
-		block_a_sel_buf <= block_a_sel;
-	end if;
+    if rising_edge(clka_i) then 
+        block_a_sel_buf <= block_a_sel;
+    end if;
 end process;
 
 process (block_a_do, block_a_sel_buf) is
 begin
-	dataa_o <= block_a_do(conv_integer(block_a_sel_buf));
+    dataa_o <= block_a_do(conv_integer(block_a_sel_buf));
 end process;
    
 -----------------------------------------------
 -- Port B
 -----------------------------------------------   
-block_b_enable <=	"00000001" when (enb_i='1') and (block_b_sel="000") else 
-					"00000010" when (enb_i='1') and (block_b_sel="001") else 
-					"00000100" when (enb_i='1') and (block_b_sel="010") else 
-					"00001000" when (enb_i='1') and (block_b_sel="011") else 
-					"00010000" when (enb_i='1') and (block_b_sel="100") else 
-					"00100000" when (enb_i='1') and (block_b_sel="101") else 
-					"01000000" when (enb_i='1') and (block_b_sel="110") else 
-					"10000000" when (enb_i='1') and (block_b_sel="111") else
-					"00000000";
+block_b_enable <=    "00000001" when (enb_i='1') and (block_b_sel="000") else 
+                    "00000010" when (enb_i='1') and (block_b_sel="001") else 
+                    "00000100" when (enb_i='1') and (block_b_sel="010") else 
+                    "00001000" when (enb_i='1') and (block_b_sel="011") else 
+                    "00010000" when (enb_i='1') and (block_b_sel="100") else 
+                    "00100000" when (enb_i='1') and (block_b_sel="101") else 
+                    "01000000" when (enb_i='1') and (block_b_sel="110") else 
+                    "10000000" when (enb_i='1') and (block_b_sel="111") else
+                    "00000000";
 
 process (clkb_i, block_b_sel) is
 begin
-	if rising_edge(clkb_i) then 
-		block_b_sel_buf <= block_b_sel;
-	end if;
+    if rising_edge(clkb_i) then 
+        block_b_sel_buf <= block_b_sel;
+    end if;
 end process;
 
 process (block_b_do, block_b_sel_buf) is
 begin
-	datab_o <= block_b_do(conv_integer(block_b_sel_buf));
-end process;	
-	
+    datab_o <= block_b_do(conv_integer(block_b_sel_buf));
+end process;    
+    
 -----------------------------------------------
 -- BRAM
------------------------------------------------	
-	-- BLOCKS generation
+-----------------------------------------------    
+    -- BLOCKS generation
    block0: if (block_count > 0) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -313,7 +352,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -492,10 +531,10 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       WEB   => web_i(0)
       );
    end generate; --block0
-	
+    
 
    block1: if (block_count > 1) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -674,7 +713,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -852,12 +891,12 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(0)
       );
-		
+        
    end generate; --block1
-	
+    
 
    block2: if (block_count > 2) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -1036,7 +1075,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -1214,12 +1253,12 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(0)
       );
-		
+        
    end generate; --block2
 
 
    block3: if (block_count > 3) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -1398,7 +1437,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -1576,12 +1615,12 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(0)
       );
-		
+        
    end generate; --block3
 
 
    block4: if (block_count > 4) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -1760,7 +1799,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -1938,12 +1977,12 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(0)
       );
-		
+        
    end generate; --block4
 
 
    block5: if (block_count > 5) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -2122,7 +2161,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -2300,12 +2339,12 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(0)
       );
-		
+        
    end generate; --block5
 
 
    block6: if (block_count > 6) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -2484,7 +2523,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -2662,12 +2701,12 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(0)
       );
-		
+        
    end generate; --block6
 
 
    block7: if (block_count > 7) generate
-	begin
+    begin
 
     ram_byte3 : RAMB16_S9_S9
    generic map (
@@ -2846,7 +2885,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(2)
       );
-	
+    
     ram_byte1 : RAMB16_S9_S9
    generic map (
 INIT_00 => X"0000000000000000000000000000000000000000000000000000000000000000",
@@ -3024,7 +3063,7 @@ INIT_3F => X"0000000000000000000000000000000000000000000000000000000000000000"
       SSRB  => ZERO(0),
       WEB   => web_i(0)
       );
-		
+        
    end generate; --block7
 
 end; --architecture logic

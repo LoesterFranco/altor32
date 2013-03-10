@@ -1,16 +1,16 @@
 ###############################################################################
-## Simulator Makefile
+## Makefile
 ###############################################################################
 
 # Target
-TARGET		= or32-sim
+TARGET       = rom_gen
 
 # Options
-CFLAGS	    =
+CFLAGS	    = 
 LDFLAGS     = 
 
 # Source Files
-OBJ = main.o or32.o or32_inst_dump.o
+OBJ = rom_gen.o
 
 ###############################################################################
 # Rules

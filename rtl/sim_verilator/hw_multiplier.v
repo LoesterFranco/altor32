@@ -1,9 +1,8 @@
 //-----------------------------------------------------------------
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
-//                            V0.1
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -14,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -36,10 +35,43 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
+//-----------------------------------------------------------------
+// Module:
+//-----------------------------------------------------------------
+module hw_multiplier 
+( 
+    clk, 
+    a, 
+    b, 
+    p 
+);
 
 //-----------------------------------------------------------------
-// Configuration
+// I/O
+//-----------------------------------------------------------------     
+input           clk;
+input   [31:0]  a;
+input   [31:0]  b;
+output  [63:0]  p;
+
 //-----------------------------------------------------------------
-`define SOC_CONF_ENABLE_SPI_FLASH
+// Registers / Wires
+//-----------------------------------------------------------------
+integer         signed_a;
+integer         signed_b;
+
+//-----------------------------------------------------------------
+// Implementation
+//----------------------------------------------------------------- 
+
+// Conversion unsigned to signed
+assign signed_a = a;
+assign signed_b = b;
+
+// Multiplier
+always @(posedge clk)
+    p <=  signed_a * signed_b;
+
+endmodule

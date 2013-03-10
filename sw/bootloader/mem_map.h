@@ -4,10 +4,10 @@
 //-----------------------------------------------------------------
 // Defines:
 //-----------------------------------------------------------------
-#define INT_BASE                0x00000000
-#define INT_APP_BASE            0x00002000
-#define EXT_BASE                0x10000000
-#define IO_BASE                 0x20000000
+#define INT_BASE                0x10000000
+#define INT_APP_BASE            0x10002000
+#define EXT_BASE                0x11000000
+#define IO_BASE                 0x12000000
 
 //-----------------------------------------------------------------
 // Macros:
@@ -19,10 +19,10 @@
 //-----------------------------------------------------------------
 // Peripheral Base Addresses
 //-----------------------------------------------------------------
-#define UART_BASE               0x20000000
-#define TIMER_BASE              0x20000100
-#define INTR_BASE               0x20000200
-#define SPI_FLASH_BASE          0x20000300
+#define UART_BASE               (IO_BASE + 0x000)
+#define TIMER_BASE              (IO_BASE + 0x100)
+#define INTR_BASE               (IO_BASE + 0x200)
+#define SPI_FLASH_BASE          (IO_BASE + 0x300)
 
 //-----------------------------------------------------------------
 // Interrupts

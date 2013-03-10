@@ -4,14 +4,11 @@
 //-----------------------------------------------------------------
 // Defines:
 //-----------------------------------------------------------------
-#define SPIFLASH_PAGESIZE               (256)
-#define SPIFLASH_BLOCKSIZE              (4 * 1024)
-#define SPIFLASH_SECTORSIZE             (SPIFLASH_BLOCKSIZE)
-#define SPIFLASH_SIZE                   (512 * 1024)    // 4Mbit
-#define    SPIFLASH_FPGA_OFFSET         (0)
-#define    SPIFLASH_FPGA_SIZE           (352 * 1024)
-#define    SPIFLASH_APP_OFFSET          (SPIFLASH_FPGA_SIZE)
-#define    SPIFLASH_APP_SIZE            (SPIFLASH_SIZE - SPIFLASH_APP_OFFSET)
+#define    SPIFLASH_SIZE            (512 * 1024)
+#define SPIFLASH_FPGA_OFFSET        (0)
+#define SPIFLASH_FPGA_SIZE          (384 * 1024)
+#define SPIFLASH_APP_OFFSET         (SPIFLASH_FPGA_SIZE)
+#define SPIFLASH_APP_SIZE           (SPIFLASH_SIZE - SPIFLASH_APP_OFFSET)
 
 //-----------------------------------------------------------------
 // Prototypes:

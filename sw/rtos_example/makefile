@@ -17,7 +17,7 @@ TARGET		= image
 LDSCRIPT    = linker_script
 CFLAGS	    = -O2 -g -Wall 
 CFLAGS	   += -msoft-div -msoft-float -msoft-mul -mno-ror -mno-cmov -mno-sext
-CFLAGS	   += -nostartfiles -nodefaultlibs -nostdlib -lgcc -Ttext 0x00000000
+CFLAGS	   += -nostartfiles -nodefaultlibs -nostdlib -lgcc -Ttext 0x10002000
 CFLAGS	   += -L ./ -lstd -T$(LDSCRIPT)
 ASFLAGS     = 
 LDFLAGS     = 
@@ -71,7 +71,7 @@ CFLAGS += -I. -I./../rtos -I./../rtos/kernel
 all: $(TARGET).elf lst bin 
 	
 clean:
-	-rm *.o *.map *.lst *.hex *.txt *.elf
+	-rm $(OBJ) *.map *.lst *.hex *.txt *.elf
 	
 %.o : %.S
 	$(CC) -c $(ASFLAGS) $< -o $@	

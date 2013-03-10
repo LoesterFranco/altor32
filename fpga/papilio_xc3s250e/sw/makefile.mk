@@ -22,8 +22,8 @@ OBJCOPY     = $(CC_PREFIX)-objcopy
 
 VERILATOR_DIR   ?= ../../../rtl/sim_verilator
 TEST_IMAGE ?=
-SIMULATOR   = ../../../or32-sim/or32-sim -l 0x2000 -x 0x2100 -f 
-VERILATOR_ARGS ?=  -l 0x2000
+SIMULATOR   = ../../../or32-sim/or32-sim -l 0x10002000 -x 0x10002100 -f 
+VERILATOR_ARGS ?=  -l 0x10002000
 BOOTHDR     = ../../../tools/bootheader
 
 SIMARGS		?=
@@ -31,7 +31,7 @@ SIMARGS		?=
 # Options
 CFLAGS 	   ?=
 LDSCRIPT    = linker_script
-CFLAGS	   += -Ttext 0x2000 -O2 -g -Wall
+CFLAGS	   += -Ttext 0x10002000 -O2 -g -Wall
 CFLAGS     += -msoft-div -msoft-float -msoft-mul -mno-ror -mno-cmov -mno-sext
 CFLAGS	   += -nostartfiles -nodefaultlibs -nostdlib -lgcc -L . -lstd -T$(LDSCRIPT)
 ASFLAGS     = -Wa

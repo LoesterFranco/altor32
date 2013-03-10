@@ -1,35 +1,42 @@
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-//                          AltOR32 OpenRisc Simulator
-//                                    V0.1
-//                              Ultra-Embedded.com
-//                            Copyright 2011 - 2012
+//-----------------------------------------------------------------
+//                           AltOR32 
+//              Alternative Lightweight OpenRisc 
+//                     Ultra-Embedded.com
+//                   Copyright 2011 - 2013
 //
-//                         Email: admin@ultra-embedded.com
+//               Email: admin@ultra-embedded.com
 //
-//                                License: GPL
-//  Please contact the above address if you would like a version of this 
-//  software with a more permissive license for use in closed source commercial 
-//  applications.
-//-----------------------------------------------------------------------------
+//                       License: LGPL
 //
-// This file is part of AltOR32 OpenRisc Simulator.
+// If you would like a version with a different license for use 
+// in commercial projects please contact the above email address 
+// for more details.
+//-----------------------------------------------------------------
 //
-// AltOR32 OpenRisc Simulator is free software; you can redistribute it and/or 
-// modify it under the terms of the GNU General Public License as published by
-// the Free Software Foundation; either version 2 of the License, or
-// (at your option) any later version.
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
-// AltOR32 OpenRisc Simulator is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// This source file may be used and distributed without         
+// restriction provided that this copyright statement is not    
+// removed from the file and that any derivative work contains  
+// the original copyright notice and the associated disclaimer. 
 //
-// You should have received a copy of the GNU General Public License
-// along with AltOR32 OpenRisc Simulator; if not, write to the Free Software
-// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
+// This source file is free software; you can redistribute it   
+// and/or modify it under the terms of the GNU Lesser General   
+// Public License as published by the Free Software Foundation; 
+// either version 2.1 of the License, or (at your option) any   
+// later version.                                               
+//
+// This source is distributed in the hope that it will be       
+// useful, but WITHOUT ANY WARRANTY; without even the implied   
+// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+// PURPOSE.  See the GNU Lesser General Public License for more 
+// details.                                                     
+//
+// You should have received a copy of the GNU Lesser General    
+// Public License along with this source; if not, write to the 
+// Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
+// Boston, MA  02111-1307  USA
+//-----------------------------------------------------------------
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -43,18 +50,31 @@
 #define DPRINTF(l,a)        do { if (Trace & l) printf a; } while (0)
 #define TRACE_ENABLED(l)    (Trace & l)
 
+#define MEMTRACE_WRITES     "mem_writes.txt"
+#define MEMTRACE_READS      "mem_reads.txt"
+#define MEMTRACE_INST       "mem_inst.txt"
+#define MEMTRACE_MIN        100
+
+#define ADD_CARRY_OUT(a,b)  ((((unsigned long long)(a) + (unsigned long long)(b)) & ((unsigned long long)1 << 32)) != 0)
+
 //-----------------------------------------------------------------
 // Constructor
 //-----------------------------------------------------------------
-OR32::OR32(unsigned int baseAddr, unsigned int len)
+OR32::OR32(unsigned int baseAddr, unsigned int len, bool delay_slot)
 {
     MemBase = baseAddr;
     MemSize = len;
-    Mem = new TMemory[len/4];
-    Trace = 0;
 
+    Mem = new TMemory[len/4];
     assert(Mem);
-    
+
+    MemInstHits  = NULL;
+    MemReadHits  = NULL;
+    MemWriteHits = NULL;
+
+    Trace = 0;
+    DelaySlotEnabled = delay_slot;    
+
     Reset();
 }
 //-----------------------------------------------------------------
@@ -65,6 +85,22 @@ OR32::~OR32()
     if (Mem)
         delete Mem;
     Mem = NULL;
+}
+//-----------------------------------------------------------------
+// EnableMemoryTrace:
+//-----------------------------------------------------------------
+void OR32::EnableMemoryTrace(void)
+{
+    MemInstHits = new TRegister[MemSize/4];
+    MemReadHits = new TRegister[MemSize/4];
+    MemWriteHits = new TRegister[MemSize/4];
+    assert(MemInstHits);
+    assert(MemReadHits);
+    assert(MemWriteHits);
+
+    memset(MemInstHits, 0, MemSize);
+    memset(MemReadHits, 0, MemSize);
+    memset(MemWriteHits, 0, MemSize);
 }
 //-----------------------------------------------------------------
 // Reset: Reset CPU state
@@ -94,6 +130,7 @@ void OR32::Reset(TRegister start_addr /*= VECTOR_RESET*/)
     mem_offset = 0;
     mem_wr = 0;
     mem_rd = 0;
+    mem_ifetch = 0;
 
     Fault = 0;
     Break = 0;
@@ -101,14 +138,31 @@ void OR32::Reset(TRegister start_addr /*= VECTOR_RESET*/)
     Trace = 0;
     Cycle = 2;    
 
+    ResetStats();
+    PeripheralReset();
+}
+//-----------------------------------------------------------------
+// ResetStats: Reset runtime stats
+//-----------------------------------------------------------------
+void OR32::ResetStats(void)
+{
     // Clear stats
     StatsMem = 0;
+    StatsMarkers = 0;
+    StatsMemWrites = 0;
     StatsInstructions = 0;
     StatsNop = 0;
     StatsBranches = 0;
     StatsExceptions = 0;
+    StatsMulu = 0;
+    StatsMul = 0;
 
-    PeripheralReset();
+    if (MemReadHits)
+        memset(MemReadHits, 0, MemSize);
+    if (MemWriteHits)
+        memset(MemWriteHits, 0, MemSize);
+    if (MemInstHits)
+        memset(MemInstHits, 0, MemSize);
 }
 //-----------------------------------------------------------------
 // Load: Load program code into startAddr offset
@@ -204,6 +258,7 @@ void OR32::Decode(void)
     // Instruction opcode read complete
     mem_wr = 0;
     mem_rd = 0;
+    mem_ifetch = 0;
 
     // Fetch instruction from 'memory bus'
     r_opcode = mem_data_in;
@@ -286,14 +341,22 @@ void OR32::Execute(void)
     // Zero result
     v_reg_result = 0;
 
-    // Update PC to next value
-    v_pc = r_pc_next;
-
-    // Increment next PC value (might be overriden by branch)
-    v_pc_next = r_pc_next + 4;
-
     // Default target is r_rd
     r_rd_wb = r_rd;
+
+    if (DelaySlotEnabled)
+    {
+        // Update PC to next value
+        v_pc = r_pc_next;
+
+        // Increment next PC value (might be overriden by branch)
+        v_pc_next = r_pc_next + 4;
+    }
+    else
+    {
+        v_pc      = r_pc + 4; // Current PC + 4
+        v_pc_next = r_pc + 8; // Current PC + 8 (used in branches)
+    }
 
     // Execute instruction
     switch(v_inst)
@@ -304,6 +367,16 @@ void OR32::Execute(void)
                 case INST_OR32_ADD: // l.add
                     v_reg_result = v_reg_ra + v_reg_rb;
                     v_write_rd = 1;
+
+                    // Carry out
+                    r_sr = (r_sr & ~OR32_SR_CY_BIT) | (ADD_CARRY_OUT(v_reg_ra, v_reg_rb) ? OR32_SR_CY_BIT : 0);
+                break;
+                case INST_OR32_ADDC: // l.addc
+                    v_reg_result = v_reg_ra + v_reg_rb + ((r_sr & OR32_SR_CY_BIT) ? 1 : 0);
+                    v_write_rd = 1;
+
+                    // Carry out
+                    r_sr = (r_sr & ~OR32_SR_CY_BIT) | (ADD_CARRY_OUT(v_reg_ra, v_reg_rb) ? OR32_SR_CY_BIT : 0);
                 break;
                 case INST_OR32_AND: // l.and
                     v_reg_result = v_reg_ra & v_reg_rb;
@@ -333,6 +406,24 @@ void OR32::Execute(void)
                     v_reg_result = v_reg_ra ^ v_reg_rb;
                     v_write_rd = 1;
                 break;
+                case INST_OR32_MUL: // l.mul
+                {
+                    long long res = ((long long) (int)v_reg_ra) * ((long long)(int)v_reg_rb);
+                    v_reg_result = (int)(res >> 0);
+                    v_write_rd = 1;                    
+                    StatsMul++;
+                }
+                break;
+                case INST_OR32_MULU: // l.mulu
+                {
+                    // This implementation differs from other cores - l.mulu returns upper 
+                    // 32-bits of multiplication result...
+                    long long res = ((long long) (int)v_reg_ra) * ((long long)(int)v_reg_rb);
+                    v_reg_result = (int)(res >> 32);
+                    v_write_rd = 1;
+                    StatsMulu++;
+                }
+                break;
                 default:
                     fprintf (stderr,"Bad ALU instruction @ PC %x\n", r_pc);
                     Fault = 1;
@@ -345,6 +436,9 @@ void OR32::Execute(void)
         case INST_OR32_ADDI: // l.addi 
             v_reg_result = v_reg_ra + v_imm_int32;
             v_write_rd = 1;
+
+            // Carry out
+            r_sr = (r_sr & ~OR32_SR_CY_BIT) | (ADD_CARRY_OUT(v_reg_ra, v_reg_rb) ? OR32_SR_CY_BIT : 0);
         break;
 
         case INST_OR32_ANDI: // l.andi
@@ -368,7 +462,10 @@ void OR32::Execute(void)
 
         case INST_OR32_JAL: // l.jal
             // Write next instruction address to LR
-            v_reg_result = v_pc_next;
+            if (DelaySlotEnabled)
+                v_reg_result = v_pc_next;
+            else
+                v_reg_result = v_pc;
             r_rd_wb = REG_9_LR;
             v_write_rd = 1;
 
@@ -377,16 +474,25 @@ void OR32::Execute(void)
 
         case INST_OR32_JALR: // l.jalr
             // Write next instruction address to LR
-            v_reg_result = v_pc_next;
+            if (DelaySlotEnabled)
+                v_reg_result = v_pc_next;
+            else
+                v_reg_result = v_pc;
             r_rd_wb = REG_9_LR;
             v_write_rd = 1;
 
-            v_pc_next = v_reg_rb;
+            if (DelaySlotEnabled)
+                v_pc_next = v_reg_rb;
+            else
+                v_pc = v_reg_rb;
             v_jmp = 1;
         break;
 
         case INST_OR32_JR: // l.jr
-            v_pc_next = v_reg_rb;
+            if (DelaySlotEnabled)
+                v_pc_next = v_reg_rb;
+            else
+                v_pc = v_reg_rb;
             v_jmp = 1;
         break;
 
@@ -483,7 +589,10 @@ void OR32::Execute(void)
 
         case INST_OR32_RFE: // l.rfe
             // Restore PC & SR from EPC & ESR
-            v_pc_next = r_epc;
+            if (DelaySlotEnabled)
+                v_pc_next = r_epc;
+            else
+                v_pc = r_epc;
             r_sr = r_esr;
             v_jmp = 1;
             
@@ -538,6 +647,7 @@ void OR32::Execute(void)
                     break;
             }
             StatsMem++;
+            StatsMemWrites++;
         break;
 
         case INST_OR32_SFXX:
@@ -694,6 +804,7 @@ void OR32::Execute(void)
                     break;
             }
             StatsMem++;
+            StatsMemWrites++;
         break;
 
         case INST_OR32_SW: // l.sw
@@ -709,6 +820,7 @@ void OR32::Execute(void)
                 mem_wr = 0;
             }
             StatsMem++;
+            StatsMemWrites++;
         break;
 
         case INST_OR32_MISC: 
@@ -749,7 +861,10 @@ void OR32::Execute(void)
     if (v_branch == 1)
     {
         v_offset = v_target << 2;
-        v_pc_next = r_pc + v_offset;
+        if (DelaySlotEnabled)
+            v_pc_next = r_pc + v_offset;
+        else
+            v_pc = r_pc + v_offset;
         StatsBranches++;
     }
     // If not branching, handle interrupts / exceptions
@@ -787,9 +902,18 @@ void OR32::Execute(void)
         StatsBranches++;
 
     // Update registers with variable values
-    r_pc_last = r_pc;
-    r_pc = v_pc;
-    r_pc_next = v_pc_next;
+    if (DelaySlotEnabled)
+    {
+        r_pc_last = r_pc;
+        r_pc = v_pc;
+        r_pc_next = v_pc_next;
+    }
+    else
+    {
+        r_pc_last = r_pc;
+        r_pc = v_pc;
+    }
+
     r_reg_result = v_reg_result;
 
     // No writeback required?
@@ -809,6 +933,7 @@ void OR32::WriteBack(void)
 
     mem_wr = 0;
     mem_rd = 0;
+    mem_ifetch = 0;
 
     v_inst = (r_opcode >> OR32_OPCODE_SHIFT) & OR32_OPCODE_MASK;
 
@@ -911,6 +1036,7 @@ void OR32::WriteBack(void)
     mem_addr = r_pc;
     mem_data_out = 0;
     mem_rd = 1;
+    mem_ifetch = 1;
 }
 //-----------------------------------------------------------------
 // Clock: Execute a single instruction (including load / store)
@@ -993,6 +1119,16 @@ bool OR32::Clock(void)
 
         // Read
         mem_data_in = Mem[wordAddress];
+
+        if (!mem_ifetch)
+        {
+            if (mem_wr && MemWriteHits)
+                MemWriteHits[wordAddress]++;
+            else if (mem_rd && MemReadHits)
+                MemReadHits[wordAddress]++;
+        }
+        else if (MemInstHits)
+            MemInstHits[wordAddress]++;
     }
     // External / Peripheral memory
     else 
@@ -1078,6 +1214,12 @@ void OR32::MonNop(TRegister imm)
         case NOP_TRACE_OFF:
             Trace = 0;
         break;
+        case NOP_STATS_RESET:
+            ResetStats();
+        break;
+        case NOP_STATS_MARKER:
+            StatsMarkers++;
+        break;
     }
 }
 //-----------------------------------------------------------------
@@ -1088,13 +1230,77 @@ void OR32::DumpStats(void)
     printf("Runtime Stats:\n");
     printf("- Total Instructions %d\n", StatsInstructions);
     printf("- Memory Operations %d (%d%%)\n", StatsMem, (StatsMem * 100) / StatsInstructions);
+    printf("  - Reads %d (%d%%)\n", (StatsMem - StatsMemWrites), ((StatsMem - StatsMemWrites) * 100) / StatsMem);
+    printf("  - Writes %d (%d%%)\n", StatsMemWrites, (StatsMemWrites * 100) / StatsMem);
+    printf("- MUL %d (%d%%)\n", StatsMul, (StatsMul * 100) / StatsInstructions);
+    printf("- MULU %d (%d%%)\n", StatsMulu, (StatsMulu * 100) / StatsInstructions);
     printf("- NOPS %d (%d%%)\n", StatsNop, (StatsNop * 100) / StatsInstructions);
+    printf("- Markers %d (%d%%)\n", StatsMarkers, (StatsMarkers * 100) / StatsInstructions);
     printf("- Branches Operations %d (%d%%)\n", StatsBranches, (StatsBranches * 100) / StatsInstructions);
-    printf("- Exceptions %d (%d%%)\n", StatsExceptions, (StatsExceptions * 100) / StatsInstructions);
+    printf("- Exceptions %d (%d%%)\n", StatsExceptions, (StatsExceptions * 100) / StatsInstructions);    
 
-    StatsMem = 0;
-    StatsInstructions = 0;
-    StatsNop = 0;
-    StatsBranches = 0;
-    StatsExceptions = 0;
+    FILE *f;
+    int i;
+
+    if (MemReadHits)
+    {
+        printf("Saving %s\n", MEMTRACE_READS);
+        f = fopen(MEMTRACE_READS, "w");
+        if (f)
+        {
+            for (i=0;i<MemSize/4;i++)
+            {
+                unsigned int addr = MemBase + (i * 4);
+                if (MemReadHits[i] > MEMTRACE_MIN)
+                {
+                    fprintf(f, "%08x %d\n", addr, MemReadHits[i]);
+                }
+            }
+            fclose(f);
+        }
+        else
+            fprintf (stderr,"Could not open file for writing\n");
+    }
+
+    if (MemWriteHits)
+    {
+        printf("Saving %s\n", MEMTRACE_WRITES);
+        f = fopen(MEMTRACE_WRITES, "w");
+        if (f)
+        {
+            for (i=0;i<MemSize/4;i++)
+            {
+                unsigned int addr = MemBase + (i * 4);
+                if (MemWriteHits[i] > MEMTRACE_MIN)
+                {
+                    fprintf(f, "%08x %d\n", addr, MemWriteHits[i]);
+                }
+            }
+            fclose(f);
+        }
+        else
+            fprintf (stderr,"Could not open file for writing\n");
+    }
+
+    if (MemInstHits)
+    {
+        printf("Saving %s\n", MEMTRACE_INST);
+        f = fopen(MEMTRACE_INST, "w");
+        if (f)
+        {
+            for (i=0;i<MemSize/4;i++)
+            {
+                unsigned int addr = MemBase + (i * 4);
+                if (MemInstHits[i] > MEMTRACE_MIN)
+                {
+                    fprintf(f, "%08x %d\n", addr, MemInstHits[i]);
+                }
+            }
+            fclose(f);
+        }
+        else
+            fprintf (stderr,"Could not open file for writing\n");
+    }
+
+    ResetStats();
 }

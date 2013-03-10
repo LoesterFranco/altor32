@@ -2,7 +2,7 @@
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -13,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -35,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------

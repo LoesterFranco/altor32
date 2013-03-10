@@ -1,9 +1,8 @@
 //-----------------------------------------------------------------
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
-//                            V0.1
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -14,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -36,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
@@ -47,7 +46,7 @@
 //-----------------------------------------------------------------
 // Module
 //-----------------------------------------------------------------
-module altor32 
+module cpu 
 ( 
     // General
     clk_i,
@@ -63,17 +62,15 @@ module altor32
     mem_data_in_i, 
     mem_wr_o, 
     mem_rd_o, 
-    mem_pause_i,
-    
-    // Status/Debug
-    dbg_pc_o
+    mem_pause_i
 );
 
 //-----------------------------------------------------------------
 // Params
 //-----------------------------------------------------------------
-parameter [31:0]    BOOT_VECTOR     = 32'h00000000;
-parameter [31:0]    ISR_VECTOR      = 32'h00000000;
+parameter [31:0]    BOOT_VECTOR         = 32'h00000000;
+parameter [31:0]    ISR_VECTOR          = 32'h00000000;
+parameter           REGISTER_FILE_TYPE  = "SIMULATION";
 
 //-----------------------------------------------------------------
 // I/O
@@ -94,9 +91,6 @@ output [3:0]        mem_wr_o /*verilator public*/;
 output              mem_rd_o /*verilator public*/;
 input               mem_pause_i /*verilator public*/;
 
-// Status/Debug
-output [31:0]       dbg_pc_o /*verilator public*/;
-    
 //-----------------------------------------------------------------
 // Registers
 //-----------------------------------------------------------------
@@ -210,28 +204,69 @@ altor32_alu alu
 );
 
 // Register file
-`ifdef CONF_TARGET_SIM
-altor32_regfile_sim
-`else
-altor32_regfile_xil
-`endif
-reg_bank
-(
-    // Clocking
-    .clk_i(clk_i), 
-    .rst_i(rst_i), 
-    .en_i(1'b1), 
-    .wr_i(r_writeback), 
+generate
+if (REGISTER_FILE_TYPE == "XILINX")
+begin
+    altor32_regfile_xil
+    reg_bank
+    (
+        // Clocking
+        .clk_i(clk_i), 
+        .rst_i(rst_i), 
+        .en_i(1'b1), 
+        .wr_i(r_writeback), 
+        
+        // Tri-port
+        .rs_i(r_ra), 
+        .rt_i(r_rb), 
+        .rd_i(r_rd_wb), 
+        .reg_rs_o(r_reg_ra), 
+        .reg_rt_o(r_reg_rb), 
+        .reg_rd_i(r_reg_rd)
+    );
+end
+else if (REGISTER_FILE_TYPE == "ALTERA")
+begin
+    altor32_regfile_alt
+    reg_bank
+    (
+        // Clocking
+        .clk_i(clk_i), 
+        .rst_i(rst_i), 
+        .en_i(1'b1), 
+        .wr_i(r_writeback), 
+        
+        // Tri-port
+        .rs_i(r_ra), 
+        .rt_i(r_rb), 
+        .rd_i(r_rd_wb), 
+        .reg_rs_o(r_reg_ra), 
+        .reg_rt_o(r_reg_rb), 
+        .reg_rd_i(r_reg_rd)
+    );
+end   
+else
+begin
+    altor32_regfile_sim
+    reg_bank
+    (
+        // Clocking
+        .clk_i(clk_i), 
+        .rst_i(rst_i), 
+        .en_i(1'b1), 
+        .wr_i(r_writeback), 
+        
+        // Tri-port
+        .rs_i(r_ra), 
+        .rt_i(r_rb), 
+        .rd_i(r_rd_wb), 
+        .reg_rs_o(r_reg_ra), 
+        .reg_rt_o(r_reg_rb), 
+        .reg_rd_i(r_reg_rd)
+    );
+end
+endgenerate
     
-    // Tri-port
-    .rs_i(r_ra), 
-    .rt_i(r_rb), 
-    .rd_i(r_rd_wb), 
-    .reg_rs_o(r_reg_ra), 
-    .reg_rt_o(r_reg_rb), 
-    .reg_rd_i(r_reg_rd)
-);
-
 //-------------------------------------------------------------------
 // Decode: Decode instruction
 //-------------------------------------------------------------------       
@@ -239,23 +274,23 @@ always @ (posedge clk_i or posedge rst_i)
 begin 
    if (rst_i) 
    begin 
-       r_opcode	<= 32'h00000000;
-       r_rd		<= 5'b00000;
-       r_ra		<= 5'b00000;
-       r_rb		<= 5'b00000;
+       r_opcode    <= 32'h00000000;
+       r_rd        <= 5'b00000;
+       r_ra        <= 5'b00000;
+       r_rb        <= 5'b00000;
    end
    // Instruction fetch cycle
    else if ((en_i == 1'b1) && (r_state == STATE_FETCH))
    begin 
        // Decode opcode in-order to perform register accesses  
        r_opcode <= mem_data_in_i;
-       r_rd		<= mem_data_in_i[25:21];
-       r_ra		<= mem_data_in_i[20:16];
-       r_rb		<= mem_data_in_i[15:11];
+       r_rd        <= mem_data_in_i[25:21];
+       r_ra        <= mem_data_in_i[20:16];
+       r_rb        <= mem_data_in_i[15:11];
        
 `ifdef CONF_CORE_DEBUG           
        $display("%08x: Fetch 0x%08x", r_pc, mem_data_in_i);
-`endif	  	       
+`endif                 
    end 
 end
 
@@ -1161,7 +1196,7 @@ begin
            end
            STATE_FETCH : 
            begin
-                r_state <= STATE_EXECUTE;				    
+                r_state <= STATE_EXECUTE;                    
            end
            STATE_EXECUTE : 
            begin
@@ -1170,7 +1205,7 @@ begin
            STATE_MEMORY:
            begin
                 r_state <= STATE_WRITEBACK;
-           end		   
+           end           
            STATE_WRITEBACK : 
            begin
                 r_state <= STATE_FETCH;
@@ -1192,8 +1227,6 @@ assign mem_addr_o           = (r_mem_access == 1'b1) ? mem_addr : r_pc;
 assign mem_data_out_o       = (r_mem_access == 1'b1) ? mem_data_out : 32'h00000000;
 assign mem_rd_o             = (r_mem_access == 1'b1) ? mem_rd : 1'b1;
 assign mem_wr_o             = mem_wr;
-
-assign dbg_pc_o             = r_pc;
 
 `include "altor32_funcs.v"    
     

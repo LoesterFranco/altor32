@@ -1,37 +1,47 @@
-//-----------------------------------------------------------------------------
-//                                     AltOR32 
-//                         Alternative Lightweight OpenRISC 
-//                                Ultra-Embedded.com
-//                               Copyright 2011 - 2012
+//-----------------------------------------------------------------
+//                           AltOR32 
+//              Alternative Lightweight OpenRisc 
+//                     Ultra-Embedded.com
+//                   Copyright 2011 - 2013
 //
-//                         Email: admin@ultra-embedded.com
+//               Email: admin@ultra-embedded.com
 //
-//                                License: GPL
-//  Please contact the above address if you would like a version of this 
-//  software with a more permissive license for use in closed source commercial 
-//  applications.
-//-----------------------------------------------------------------------------
+//                       License: LGPL
 //
-// This file is part of AltOR32 Alternative Lightweight OpenRISC project.
+// If you would like a version with a different license for use 
+// in commercial projects please contact the above email address 
+// for more details.
+//-----------------------------------------------------------------
 //
-// AltOR32 is free software; you can redistribute it and/or modify it under 
-// the terms of the GNU General Public License as published by the Free Software 
-// Foundation; either version 2 of the License, or (at your option) any later 
-// version.
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
-// AltOR32 is distributed in the hope that it will be useful, but WITHOUT ANY 
-// WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS 
-// FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more 
-// details.
+// This source file may be used and distributed without         
+// restriction provided that this copyright statement is not    
+// removed from the file and that any derivative work contains  
+// the original copyright notice and the associated disclaimer. 
 //
-// You should have received a copy of the GNU General Public License
-// along with AltOR32; if not, write to the Free Software Foundation, Inc., 
-// 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-//-----------------------------------------------------------------------------
+// This source file is free software; you can redistribute it   
+// and/or modify it under the terms of the GNU Lesser General   
+// Public License as published by the Free Software Foundation; 
+// either version 2.1 of the License, or (at your option) any   
+// later version.                                               
+//
+// This source is distributed in the hope that it will be       
+// useful, but WITHOUT ANY WARRANTY; without even the implied   
+// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+// PURPOSE.  See the GNU Lesser General Public License for more 
+// details.                                                     
+//
+// You should have received a copy of the GNU Lesser General    
+// Public License along with this source; if not, write to the 
+// Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
+// Boston, MA  02111-1307  USA
+//-----------------------------------------------------------------
 #include "assert.h"
 #include "mem_map.h"
 #include "spi_flash.h"
 
+#ifdef USE_SPI_FLASH
 //-------------------------------------------------------------
 // Defines:
 //-------------------------------------------------------------
@@ -59,21 +69,69 @@
     #define SPIFLASH_STAT_BPL           (1 << 7)
 #define SPIFLASH_OP_WREN            0x06
 #define SPIFLASH_OP_ERASESECTOR     0x20
+#define SPIFLASH_OP_ERASESECTOR_NM  0xD8
 #define SPIFLASH_OP_ERASECHIP       0x60
 #define SPIFLASH_OP_RDID            0x9F
 #define SPIFLASH_OP_AAIP            0xAD
 
-typedef enum
+//-------------------------------------------------------------
+// Types:
+//-------------------------------------------------------------
+struct spi_flash_desc
 {
-    SPI_FLASH_GENERIC,
-    SPI_FLASH_SST25VF040B,
-    SPI_FLASH_AT25DF041A
-} tSpiDevice;
+    unsigned char    manufacturer_id;
+    unsigned char    device_id;
+    unsigned int     size_program;
+    unsigned int     size_read;
+    unsigned int     size_erase;
+    unsigned char    command_erase;
+    int              skip_write_status;
+};
+
+//-------------------------------------------------------------
+// Tables:
+//-------------------------------------------------------------
+const struct spi_flash_desc _spi_devices[] = 
+{
+    /* Numonyx M25P80 8Mbit */
+    [0] =
+    {
+        .manufacturer_id    = 0x20,
+        .device_id          = 0x20,
+        .size_program       = 256,
+        .size_read          = 256,
+        .size_erase         = (64 * 1024),
+        .command_erase      = 0xD8,
+        .skip_write_status  = 1
+    },
+    /* Atmel 4Mbit */
+    [1] =
+    {
+        .manufacturer_id    = 0x1F,
+        .device_id          = 0x44,
+        .size_program       = 256,
+        .size_read          = 256,
+        .size_erase         = (4 * 1024),
+        .command_erase      = 0x20,
+        .skip_write_status  = 0
+    },
+    /* SST SST25VF040B 4Mbit */
+    [2] =
+    {
+        .manufacturer_id    = 0xBF,
+        .device_id          = 0x25,
+        .size_program       = 1, /* byte program */
+        .size_read          = 256,
+        .size_erase         = (4 * 1024),
+        .command_erase      = 0x20,
+        .skip_write_status  = 0
+    }
+};
 
 //-------------------------------------------------------------
 // Locals:
 //-------------------------------------------------------------
-static tSpiDevice _device = SPI_FLASH_GENERIC;
+static struct spi_flash_desc *spi_dev;
 
 //-------------------------------------------------------------
 // spiflash_writebyte:
@@ -161,24 +219,6 @@ static void spiflash_writestatus(unsigned char value)
     SPIFLASH_CS_HIGH;
 }
 //-------------------------------------------------------------
-// spiflash_programbyte:
-//-------------------------------------------------------------
-static void spiflash_programbyte(unsigned long address, unsigned char data)
-{
-    // Execute write enable command
-    spiflash_writeenable();
-
-    // Program a word at a specific address
-    SPIFLASH_CS_LOW;
-    spiflash_command(SPIFLASH_OP_PROGRAM, address);
-    spiflash_writebyte(data);
-    SPIFLASH_CS_HIGH;
-
-    // Wait until operation completed
-    while (spiflash_readstatus() & SPIFLASH_STAT_BUSY)
-        ;
-}
-//-------------------------------------------------------------
 // spiflash_programpage:
 //-------------------------------------------------------------
 static void spiflash_programpage(unsigned long address, unsigned char *data, unsigned int size)
@@ -202,6 +242,21 @@ static void spiflash_programpage(unsigned long address, unsigned char *data, uns
     while (spiflash_readstatus() & SPIFLASH_STAT_BUSY)
         ;
 }
+//-------------------------------------------------------------
+// spiflash_readpage:
+//-------------------------------------------------------------
+static void spiflash_readpage(unsigned long address, unsigned char *buf, int length)
+{
+    int i;
+
+    SPIFLASH_CS_LOW;
+    spiflash_command(SPIFLASH_OP_READ, address);
+
+    for (i=0;i<length;i++)
+        buf[i] = spiflash_readbyte();
+
+    SPIFLASH_CS_HIGH;
+}
 
 //-------------------------------------------------------------
 //                        External API
@@ -212,39 +267,37 @@ static void spiflash_programpage(unsigned long address, unsigned char *data, uns
 //-------------------------------------------------------------
 int spiflash_init(void)
 {
-    int res;
-    unsigned char id;
+    int ok = 0;
+    unsigned char id = 0;
+    unsigned char man;
+    int i;
 
     // Do dummy reads first
     spiflash_readstatus();
     spiflash_readid(SPIFLASH_DEV_ADDR);
 
-    // Check device ID
-    switch ((id = spiflash_readid(SPIFLASH_MAN_ADDR)))
+    // Get manufacturer & device IDs
+    man = spiflash_readid(SPIFLASH_MAN_ADDR);
+    id = spiflash_readid(SPIFLASH_DEV_ADDR);
+
+    // Find device details
+    spi_dev = 0;
+    for (i=0;i<(sizeof(_spi_devices) / sizeof(_spi_devices[0])); i++)
     {
-        // Atmel
-        case 0x1F:            
-            id = spiflash_readid(SPIFLASH_DEV_ADDR);
-            res = ( id == 0x44 );
-            assert( res && "Unknown device ID" );
-            _device = SPI_FLASH_AT25DF041A;
+        if (_spi_devices[i].manufacturer_id == man &&
+            _spi_devices[i].device_id == id)
+        {
+            spi_dev = (struct spi_flash_desc*)&_spi_devices[i];
+            ok = 1;
             break;
-        // SST
-        case 0xBF:
-            id = spiflash_readid(SPIFLASH_DEV_ADDR);
-            res = ( id == 0x25 );
-            assert( res && "Unknown device ID" );
-            _device = SPI_FLASH_SST25VF040B;
-            break;
-        default:
-            res = 0;
-            assert(res && "Unknown manufacturer ID");
-            break;
+        }
     }
 
-    // Enable device writes
-    spiflash_writestatus(0);
-    return res;
+    // Enable device writes (not Numonyx)
+    if (ok && !spi_dev->skip_write_status)
+        spiflash_writestatus(0);
+
+    return ok;
 }
 //-------------------------------------------------------------
 // spiflash_readblock:
@@ -253,14 +306,20 @@ int spiflash_readblock(unsigned long address, unsigned char *buf, int length)
 {
     int i;
 
-    SPIFLASH_CS_LOW;
+    for (i=0;i<length;)
+    {
+        int size = length - i;
 
-    spiflash_command(SPIFLASH_OP_READ, address);
+        if (size > spi_dev->size_read)
+            size = spi_dev->size_read;
 
-    for (i=0;i<length;i++)
-        buf[i] = spiflash_readbyte();
+        // Read block from flash
+        spiflash_readpage(address, buf, size);
 
-    SPIFLASH_CS_HIGH;
+        address += size;
+        buf     += size;
+        i       += size;
+    }
 
     return 0;
 }
@@ -269,31 +328,25 @@ int spiflash_readblock(unsigned long address, unsigned char *buf, int length)
 //-------------------------------------------------------------
 int spiflash_writeblock(unsigned long address, unsigned char *buf, int length)
 {
-    int i, j;
+    int i;
 
     // Sector boundary? Erase sector
-    if ((address & (SPIFLASH_SECTORSIZE - 1)) == 0)
+    if ((address & (spi_dev->size_erase - 1)) == 0)
         spiflash_eraseblock(address);    
 
-    for (i=0;i<length;i+=SPIFLASH_PAGESIZE)
+    for (i=0;i<length;)
     {
         int size = length - i;
 
-        if (size > SPIFLASH_PAGESIZE)
-            size = SPIFLASH_PAGESIZE;
+        if (size > spi_dev->size_program)
+            size = spi_dev->size_program;
 
-        // Byte program device
-        if (_device == SPI_FLASH_SST25VF040B)
-        {
-            for (j=0;j<size;j++)
-                spiflash_programbyte(address + j, buf[j]);
-        }
-        // Block program device
-        else
-            spiflash_programpage(address, buf, size);
+        // Write block to flash (can be a single byte)
+        spiflash_programpage(address, buf, size);
 
-        address += SPIFLASH_PAGESIZE;
-        buf += SPIFLASH_PAGESIZE;
+        address += size;
+        buf     += size;
+        i       += size;
     }
 
     return 0;
@@ -308,7 +361,7 @@ int spiflash_eraseblock(unsigned long address)
 
     // Erase sector
     SPIFLASH_CS_LOW;
-    spiflash_command(SPIFLASH_OP_ERASESECTOR, address);
+    spiflash_command(spi_dev->command_erase, address);
     SPIFLASH_CS_HIGH;    
 
     // Wait until operation completed
@@ -336,4 +389,4 @@ int spiflash_erasechip(void)
 
     return 0;
 }
-
+#endif

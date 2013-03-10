@@ -1,9 +1,8 @@
 //-----------------------------------------------------------------
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
-//                            V0.1
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -14,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -36,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
@@ -48,21 +47,21 @@
 // Module:
 //-----------------------------------------------------------------
 module uart_periph
-( 
+(
     // General - Clocking & Reset
-    clk_i, 
-    rst_i, 
+    clk_i,
+    rst_i,
     intr_o,
-    
+
     // UART
-    tx_o, 
-    rx_i, 
-    
+    tx_o,
+    rx_i,
+
     // Peripheral bus
-    addr_i, 
-    data_o, 
-    data_i, 
-    wr_i, 
+    addr_i,
+    data_o,
+    data_i,
+    wr_i,
     rd_i
 );
 
@@ -70,10 +69,10 @@ module uart_periph
 // Params
 //-----------------------------------------------------------------
 parameter  [31:0]   UART_DIVISOR        = 1;
-    
+
 //-----------------------------------------------------------------
 // I/O
-//-----------------------------------------------------------------     
+//-----------------------------------------------------------------
 input               clk_i /*verilator public*/;
 input               rst_i /*verilator public*/;
 output              intr_o /*verilator public*/;
@@ -102,54 +101,54 @@ wire                uart_rx_avail;
 
 //-----------------------------------------------------------------
 // Instantiation
-//-----------------------------------------------------------------  
+//-----------------------------------------------------------------
 
 // UART
-uart  
+uart
 #(
     .UART_DIVISOR(UART_DIVISOR)
-) 
+)
 u1_uart
 (
-    .clk_i(clk_i), 
-    .rst_i(rst_i), 
-    .data_i(uart_tx_data), 
-    .data_o(uart_rx_data), 
-    .wr_i(uart_wr), 
-    .rd_i(uart_rd), 
-    .tx_busy_o(uart_tx_busy), 
-    .rx_ready_o(uart_rx_avail), 
-    .rxd_i(rx_i), 
+    .clk_i(clk_i),
+    .rst_i(rst_i),
+    .data_i(uart_tx_data),
+    .data_o(uart_rx_data),
+    .wr_i(uart_wr),
+    .rd_i(uart_rd),
+    .tx_busy_o(uart_tx_busy),
+    .rx_ready_o(uart_rx_avail),
+    .rxd_i(rx_i),
     .txd_o(tx_o)
 );
 
 //-----------------------------------------------------------------
 // Peripheral Register Write
-//-----------------------------------------------------------------   
+//-----------------------------------------------------------------
 always @ (posedge rst_i or posedge clk_i )
-begin 
-   if (rst_i == 1'b1) 
-   begin 
+begin
+   if (rst_i == 1'b1)
+   begin
        uart_tx_data     <= 8'h00;
        uart_wr          <= 1'b0;
    end
-   else 
-   begin 
-   
+   else
+   begin
+
        uart_wr            <= 1'b0;
-       
+
        // Write Cycle
        if (wr_i != 4'b0000)
        begin
            case (addr_i)
-           
-           `UART_UDR : 
-           begin 
+
+           `UART_UDR :
+           begin
                uart_tx_data <= data_i[7:0];
                uart_wr <= 1'b1;
            end
-                  
-           default : 
+
+           default :
                ;
            endcase
         end
@@ -158,42 +157,42 @@ end
 
 //-----------------------------------------------------------------
 // Peripheral Register Read
-//----------------------------------------------------------------- 
+//-----------------------------------------------------------------
 always @ (posedge rst_i or posedge clk_i )
-begin 
-   if (rst_i == 1'b1) 
-   begin 
+begin
+   if (rst_i == 1'b1)
+   begin
        data_o       <= 32'h00000000;
        uart_rd      <= 1'b0;
    end
-   else 
-   begin 
+   else
+   begin
        uart_rd <= 1'b0;
-       
+
        // Read cycle?
        if (rd_i == 1'b1)
        begin
            case (addr_i[7:0])
-                
-           `UART_USR : 
+
+           `UART_USR :
                 data_o <= {27'h0000000, 1'b0, uart_tx_busy, 1'b0, 1'b0, uart_rx_avail};
-                
-           `UART_UDR : 
-           begin 
+
+           `UART_UDR :
+           begin
                data_o <= {24'h000000,uart_rx_data};
                uart_rd <= 1'b1;
            end
-             
-           default : 
+
+           default :
                 data_o <= 32'h00000000;
            endcase
         end
    end
 end
-      
+
 //-----------------------------------------------------------------
-// Combinatorial Logic
-//-----------------------------------------------------------------     
+// Assignments
+//-----------------------------------------------------------------
 assign intr_o      = uart_rx_avail;
 
 endmodule

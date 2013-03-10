@@ -1,4 +1,43 @@
 //-----------------------------------------------------------------
+//                           AltOR32 
+//              Alternative Lightweight OpenRisc 
+//                     Ultra-Embedded.com
+//                   Copyright 2011 - 2013
+//
+//               Email: admin@ultra-embedded.com
+//
+//                       License: LGPL
+//
+// If you would like a version with a different license for use 
+// in commercial projects please contact the above email address 
+// for more details.
+//-----------------------------------------------------------------
+//
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
+//
+// This source file may be used and distributed without         
+// restriction provided that this copyright statement is not    
+// removed from the file and that any derivative work contains  
+// the original copyright notice and the associated disclaimer. 
+//
+// This source file is free software; you can redistribute it   
+// and/or modify it under the terms of the GNU Lesser General   
+// Public License as published by the Free Software Foundation; 
+// either version 2.1 of the License, or (at your option) any   
+// later version.                                               
+//
+// This source is distributed in the hope that it will be       
+// useful, but WITHOUT ANY WARRANTY; without even the implied   
+// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+// PURPOSE.  See the GNU Lesser General Public License for more 
+// details.                                                     
+//
+// You should have received a copy of the GNU Lesser General    
+// Public License along with this source; if not, write to the 
+// Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
+// Boston, MA  02111-1307  USA
+//-----------------------------------------------------------------
+//-----------------------------------------------------------------
 // ALU Operations
 //-----------------------------------------------------------------
 `define ALU_NONE                                4'b0000
@@ -6,16 +45,18 @@
 `define ALU_SHIFTR                              4'b0010
 `define ALU_SHIRTR_ARITH                        4'b0011
 `define ALU_ADD                                 4'b0100
-`define ALU_SUB                                 4'b0101
-`define ALU_AND                                 4'b0110
-`define ALU_OR                                  4'b0111
-`define ALU_XOR                                 4'b1000
+`define ALU_ADDC                                4'b0101
+`define ALU_SUB                                 4'b0110
+`define ALU_AND                                 4'b0111
+`define ALU_OR                                  4'b1000
+`define ALU_XOR                                 4'b1001
 
 //-----------------------------------------------------------------
 // ALU Instructions
 //-----------------------------------------------------------------
 `define INST_OR32_ALU                            8'h38
 `define INST_OR32_ADD                            8'h00
+`define INST_OR32_ADDC                           8'h01
 `define INST_OR32_AND                            8'h03
 `define INST_OR32_OR                             8'h04
 `define INST_OR32_SLL                            8'h08
@@ -23,6 +64,8 @@
 `define INST_OR32_SRL                            8'h18
 `define INST_OR32_SUB                            8'h02
 `define INST_OR32_XOR                            8'h05
+`define INST_OR32_MUL                            8'hc6
+`define INST_OR32_MULU                           8'hcb
 
 //-----------------------------------------------------------------
 // INST_OR32_SHIFTI Instructions
@@ -104,6 +147,9 @@
 `define SPR_REG_SR                               16'h0011
 `define SPR_REG_EPCR                             16'h0020
 `define SPR_REG_ESR                              16'h0040
+
+`define SPR_REG_MACLO                            16'h0080
+`define SPR_REG_MACHI                            16'h0081
 
 //-----------------------------------------------------------------
 // SR Register bits

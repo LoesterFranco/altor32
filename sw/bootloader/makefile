@@ -15,12 +15,16 @@ BOOTRAM_GEN         = ../../tools/bootram_gen
 BOOTRAM_TEMPLATE    = ../../tools/bootram_template.vhd
 BOOTRAM_TARGET     ?= ./program.vhd
 
+# Verilator
+VERILATOR_DIR  ?= ../../rtl/sim_verilator
+VERILATOR_ARGS ?=  -l 0x10000000
+
 # Target
 TARGET		= bootloader
 
 # Options
 LDSCRIPT    = linker_script
-CFLAGS	   += -Ttext 0x0 -O2 -g -Wall
+CFLAGS	   += -Ttext 0x10000000 -O2 -g -Wall
 CFLAGS     += -msoft-div -msoft-float -msoft-mul -mno-ror -mno-cmov -mno-sext
 CFLAGS	   += -nostartfiles -nodefaultlibs -nostdlib -lgcc 
 CFLAGS	   += -L ./ -lgcc -L ./ -T$(LDSCRIPT)
@@ -37,6 +41,7 @@ OBJ += timer.o
 OBJ += spi_flash.o
 
 CFLAGS += -I.
+CFLAGS += -DUSE_SPI_FLASH
 
 
 ###############################################################################
@@ -68,3 +73,6 @@ bin: $(TARGET).bin
 	
 bootram: bin
 	$(BOOTRAM_GEN) -f $(TARGET).bin -t $(BOOTRAM_TEMPLATE) -o $(BOOTRAM_TARGET)
+
+run: bin
+	make -C $(VERILATOR_DIR) TEST_IMAGE=$(CURDIR)/$(TARGET).bin SIMARGS="$(VERILATOR_ARGS)"

@@ -1,9 +1,8 @@
 //-----------------------------------------------------------------
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
-//                            V0.1
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -14,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -36,29 +35,29 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
 // Module
 //-----------------------------------------------------------------
-module spi_master 
+module spi_master
 (
-    // Clocking & Reset 
-    clk_i, 
-    rst_i, 
+    // Clocking & Reset
+    clk_i,
+    rst_i,
     // Control & Status
-    start_i, 
-    done_o, 
-    busy_o, 
+    start_i,
+    done_o,
+    busy_o,
     // Data
-    data_i, 
+    data_i,
     data_o,
-    // SPI Bus 
-    spi_clk_o, 
-    spi_ss_o, 
-    spi_mosi_o, 
-    spi_miso_i 
+    // SPI Bus
+    spi_clk_o,
+    spi_ss_o,
+    spi_mosi_o,
+    spi_miso_i
 );
 
 //-----------------------------------------------------------------
@@ -66,10 +65,10 @@ module spi_master
 //-----------------------------------------------------------------
 parameter  [31:0]               CLK_DIV = 32;
 parameter  [31:0]               TRANSFER_WIDTH = 8;
-    
+
 //-----------------------------------------------------------------
 // I/O
-//-----------------------------------------------------------------      
+//-----------------------------------------------------------------
 input                           clk_i /*verilator public*/;
 input                           rst_i /*verilator public*/;
 input                           start_i /*verilator public*/;
@@ -97,14 +96,14 @@ reg                             spi_clk_o;
 
 //-----------------------------------------------------------------
 // Implementation
-//-----------------------------------------------------------------   
+//-----------------------------------------------------------------
 
-// SPI Clock Generator 
-always @ (posedge clk_i or posedge rst_i ) 
-begin 
-   // Async Reset  
+// SPI Clock Generator
+always @ (posedge clk_i or posedge rst_i )
+begin
+   // Async Reset
    if (rst_i == 1'b1)
-   begin 
+   begin
        clk_div_count    <= 0;
        spi_clk_gen      <= 1'b0;
    end
@@ -112,20 +111,20 @@ begin
    begin
        // SPI transfer active?
        if (running == 1'b1)
-       begin 
+       begin
            // Clock divider cycle_count matched?
-           if (clk_div_count == (CLK_DIV - 1)) 
-           begin 
+           if (clk_div_count == (CLK_DIV - 1))
+           begin
                // Toggle clock (input to SPI transfer process)
                spi_clk_gen   <= ~(spi_clk_gen);
-               
+
                // Reset counter
                clk_div_count <= 0;
            end
            // Increment SPI clock divider counter
            else
                 clk_div_count <= (clk_div_count + 1);
-       end 
+       end
        else // (!running)
            spi_clk_gen <= 1'b0;
     end
@@ -133,10 +132,10 @@ end
 
 // SPI transfer process
 always @ (posedge clk_i or posedge rst_i )
-begin 
-   // Async Reset  
+begin
+   // Async Reset
    if (rst_i == 1'b1)
-   begin 
+   begin
        cycle_count  <= 0;
        shift_reg    <= {(TRANSFER_WIDTH - 0){1'b0}};
        last_clk_gen <= 1'b0;
@@ -145,22 +144,22 @@ begin
        done_o       <= 1'b0;
        spi_ss_o     <= 1'b0;
    end
-   else 
-   begin 
-   
+   else
+   begin
+
        // Update previous SCLK value
        last_clk_gen <= spi_clk_gen;
-       
+
        done_o <= 1'b0;
-       
+
        //-------------------------------
        // SPI = IDLE
        //-------------------------------
        if (running == 1'b0)
-       begin 
+       begin
            // Wait until start_i = 1 to start_i transfer
            if (start_i == 1'b1)
-           begin 
+           begin
                cycle_count  <= 0;
                shift_reg    <= data_i;
                running      <= 1'b1;
@@ -174,29 +173,29 @@ begin
        begin
            // SCLK 1->0 - Falling Edge
            if ((last_clk_gen == 1'b1) && (spi_clk_gen == 1'b0))
-           begin 
+           begin
                // SCLK_OUT = L
                spi_clk_o <= 1'b0;
-               
+
                // Increment cycle counter
                cycle_count <= (cycle_count + 1);
-               
+
                // Shift left & add MISO to LSB
                shift_reg <= {shift_reg[(TRANSFER_WIDTH - 2):0],spi_miso_i};
-               
+
                // End of SPI transfer reached
                if (cycle_count == (TRANSFER_WIDTH - 1))
-               begin 
+               begin
                    // Go back to IDLE running
                    running  <= 1'b0;
-                   
+
                    // Set transfer complete flags
                    done_o   <= 1'b1;
                    spi_ss_o <= 1'b0;
                end
            end
            // SCLK 0->1 - Rising Edge
-           else if ((last_clk_gen == 1'b0) & (spi_clk_gen == 1'b1)) 
+           else if ((last_clk_gen == 1'b0) & (spi_clk_gen == 1'b1))
            begin
                // SCLK_OUT = H
                spi_clk_o <= 1'b1;
@@ -204,10 +203,10 @@ begin
        end
    end
 end
-   
+
 //-----------------------------------------------------------------
 // Combinatorial Logic
-//-----------------------------------------------------------------  
+//-----------------------------------------------------------------
 assign spi_mosi_o    = shift_reg[(TRANSFER_WIDTH - 1)];
 assign data_o        = shift_reg;
 assign busy_o        = ((running == 1'b1) || (start_i == 1'b1)) ? 1'b1 : 1'b0;

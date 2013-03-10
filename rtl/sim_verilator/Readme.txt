@@ -10,7 +10,7 @@ Requirements:
 To run an application binary:
   make TEST_IMAGE=test_image.bin
 
-Where test_image.bin is your compiled source which has a starting address of 0x00000100.
+Where test_image.bin is your compiled source which has a starting address of 0x10000100.
 
 To generate (GTKwave) waveforms;
   make TEST_IMAGE=test_image.bin TRACE=1

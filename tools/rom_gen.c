@@ -37,54 +37,105 @@
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
 // Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+
+#include <unistd.h>
 
 //-----------------------------------------------------------------
-// Module
+// Defines:
 //-----------------------------------------------------------------
-module sram 
-( 
-    clk_i, 
-    adr_i, 
-    dat_i, 
-    wr_i,
-    dat_o
-);
 
 //-----------------------------------------------------------------
-// Params
+// Types:
 //-----------------------------------------------------------------
-parameter  [31:0]       WIDTH = 8;
-parameter  [31:0]       SIZE = 14;
 
 //-----------------------------------------------------------------
-// I/O
-//-----------------------------------------------------------------    
-input                   clk_i /*verilator public*/;
-output [(WIDTH - 1):0]  dat_o /*verilator public*/;
-input [(WIDTH - 1):0]   dat_i /*verilator public*/;
-input [(SIZE - 1):0]    adr_i /*verilator public*/;
-input                   wr_i /*verilator public*/;
-
+// main:
 //-----------------------------------------------------------------
-// Registers
-//-----------------------------------------------------------------
-reg [(WIDTH - 1):0]     ram [((2<< (SIZE-1)) - 1):0] /*verilator public*/;
-reg [(SIZE - 1):0]      rd_addr;
-wire [(WIDTH - 1):0]    dat_o;
+int main(int argc, char *argv[])
+{
+    int c;
+    FILE *f;
+    char filename[256];
+    char signalname[256];
+    int address_increment = 4;
+    int help = 0;
 
-//-----------------------------------------------------------------
-// Processes
-//-----------------------------------------------------------------
-always @ (posedge clk_i)
-begin 
-    if (wr_i == 1'b1)
-        ram[adr_i] <= dat_i;
-    rd_addr <= adr_i;
-end
+    filename[0] = 0;
+    strcpy(signalname, "data_o  <=");
 
-//-------------------------------------------------------------------
-// Combinatorial
-//-------------------------------------------------------------------
-assign dat_o = ram[rd_addr];
+    while ((c = getopt(argc, argv, "hf:s:i:")) != EOF)
+    {
+        switch (c)
+        {
+            case 'h':
+                help = 1;
+                break;
+            case 'f':
+                strcpy(filename, optarg);
+                break;
+            case 's':
+                strcpy(signalname, optarg);
+                break;
+            case 'i':
+                address_increment = strtoul(optarg, NULL, 0);
+                break;
+        }
+    }
 
-endmodule
+    if (filename[0] == '\0' || help)
+    {
+        fprintf(stderr, "Options:\n");
+        fprintf(stderr, " -f inputFile\n");
+        fprintf(stderr, " -s signalName\n");
+        fprintf(stderr, " -i addressIncrement\n");
+        return help ? 0 : 1;
+    }
+
+    f = fopen(filename, "rb");
+    if (f)
+    {
+        int i;
+        unsigned int size;
+        unsigned int words;
+        unsigned char buf;
+        unsigned int data;
+
+        // Get size
+        fseek(f, 0, SEEK_END);
+        size = ftell(f);
+        rewind(f);
+
+        // Round up to number of words
+        words = (size + 3) / 4;
+
+        for (i=0;i<words;i++)
+        {
+            fread(&buf, 1, 1, f);
+            data = buf;
+            data <<= 8;
+            fread(&buf, 1, 1, f);
+            data |= buf;
+            data <<= 8;
+            fread(&buf, 1, 1, f);
+            data |= buf;
+            data <<= 8;
+            fread(&buf, 1, 1, f);
+            data |= buf;
+
+            printf("    %d: %s 32'h%08x;\n", i*address_increment, signalname, data);
+        }
+    
+        fclose(f);
+        return 0;
+    }
+    else
+    {
+        fprintf(stderr, "Could not open file %s\n", filename);
+        return 1;
+    }
+}
+

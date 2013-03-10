@@ -1,9 +1,8 @@
 //-----------------------------------------------------------------
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
-//                            V0.1
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -14,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -36,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
@@ -47,12 +46,12 @@
 //-----------------------------------------------------------------
 // Module
 //-----------------------------------------------------------------
-module altor32_alu 
-( 
-    input_a, 
-    input_b, 
-    func, 
-    result 
+module altor32_alu
+(
+    input_a,
+    input_b,
+    func,
+    result
 );
 
 //-----------------------------------------------------------------
@@ -68,25 +67,103 @@ output [31:0]   result      /*verilator public*/;
 //-----------------------------------------------------------------
 reg [31:0]      result;
 
+reg [31:16]     shift_right_fill;
+reg [31:0]      shift_right_1;
+reg [31:0]      shift_right_2;
+reg [31:0]      shift_right_4;
+reg [31:0]      shift_right_8;
+
+reg [31:0]      shift_left_1;
+reg [31:0]      shift_left_2;
+reg [31:0]      shift_left_4;
+reg [31:0]      shift_left_8;
+
 //-----------------------------------------------------------------
 // ALU
 //-----------------------------------------------------------------
 always @ (func or input_a or input_b )
-begin 
+begin
    case (func)
-       `ALU_SHIFTL :        result = shift_left(input_a, input_b);
-       `ALU_SHIFTR :        result = shift_right(input_a, input_b);
-       `ALU_SHIRTR_ARITH:   result = shift_right_arith(input_a, input_b);
-       `ALU_ADD :           result = (input_a + input_b);
-       `ALU_SUB :           result = (input_a - input_b);
-       `ALU_AND :           result = (input_a & input_b);
-       `ALU_OR :            result = (input_a | input_b);
-       `ALU_XOR :           result = (input_a ^ input_b);
-       default : 
-            result = 32'h00000000;
+       //----------------------------------------------
+       // Shift Left
+       //----------------------------------------------   
+       `ALU_SHIFTL :
+       begin
+            if (input_b[0] == 1'b1)
+                shift_left_1 = {input_a[30:0],1'b0};
+            else
+                shift_left_1 = input_a;
+
+            if (input_b[1] == 1'b1)
+                shift_left_2 = {shift_left_1[29:0],2'b00};
+            else
+                shift_left_2 = shift_left_1;
+
+            if (input_b[2] == 1'b1)
+                shift_left_4 = {shift_left_2[27:0],4'b0000};
+            else
+                shift_left_4 = shift_left_2;
+
+            if (input_b[3] == 1'b1)
+                shift_left_8 = {shift_left_4[23:0],8'b00000000};
+            else
+                shift_left_8 = shift_left_4;
+
+            if (input_b[4] == 1'b1)
+                result = {shift_left_8[15:0],16'b0000000000000000};
+            else
+                result = shift_left_8;
+       end
+       //----------------------------------------------
+       // Shift Right
+       //----------------------------------------------
+       `ALU_SHIFTR, `ALU_SHIRTR_ARITH:
+       begin
+            // Arithmetic shift? Fill with 1's if MSB set
+            if (input_a[31] == 1'b1 && func == `ALU_SHIRTR_ARITH)
+                shift_right_fill = 16'b1111111111111111;
+            else
+                shift_right_fill = 16'b0000000000000000;
+
+            if (input_b[0] == 1'b1)
+                shift_right_1 = {shift_right_fill[31], input_a[31:1]};
+            else
+                shift_right_1 = input_a;
+
+            if (input_b[1] == 1'b1)
+                shift_right_2 = {shift_right_fill[31:30], shift_right_1[31:2]};
+            else
+                shift_right_2 = shift_right_1;
+
+            if (input_b[2] == 1'b1)
+                shift_right_4 = {shift_right_fill[31:28], shift_right_2[31:4]};
+            else
+                shift_right_4 = shift_right_2;
+
+            if (input_b[3] == 1'b1)
+                shift_right_8 = {shift_right_fill[31:24], shift_right_4[31:8]};
+            else
+                shift_right_8 = shift_right_4;
+
+            if (input_b[4] == 1'b1)
+                result = {shift_right_fill[31:16], shift_right_8[31:16]};
+            else
+                result = shift_right_8;
+       end
+       //----------------------------------------------
+       // Arithmetic
+       //----------------------------------------------
+       `ALU_ADD : result = (input_a + input_b);
+       `ALU_SUB : result = (input_a - input_b);
+       //----------------------------------------------
+       // Logical
+       //----------------------------------------------       
+       `ALU_AND : result = (input_a & input_b);
+       `ALU_OR  : result = (input_a | input_b);
+       `ALU_XOR : result = (input_a ^ input_b);
+       
+       default  : result = 32'h00000000;
    endcase
 end
-    
-`include "altor32_funcs.v"
 
 endmodule

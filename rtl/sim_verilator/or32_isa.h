@@ -171,6 +171,11 @@ enum ERegisters
 #define SPR_REG_EPCR                            32
 #define SPR_REG_ESR                             64
 
+#ifdef USE_HW_MULT
+    #define SPR_REG_MACLO                       128
+    #define SPR_REG_MACHI                       129
+#endif
+
 //--------------------------------------------------------------------
 // SR Register bits
 //--------------------------------------------------------------------
@@ -205,10 +210,6 @@ enum ERegisters
 #define NOP_PUTC                                0x0004
 #define NOP_TRACE_ON                            0x0008
 #define NOP_TRACE_OFF                           0x0009
-#define NOP_STATS_RESET                         0x000A
-#define NOP_PROFILE_ON                          0x000B
-#define NOP_PROFILE_OFF                         0x000C
-#define NOP_STATS_MARKER                        0x000D
 
 //--------------------------------------------------------------------
 // OR32 Vectors

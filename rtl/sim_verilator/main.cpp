@@ -2,7 +2,7 @@
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -13,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -35,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 #include <stdio.h>
 #include <unistd.h>
@@ -46,6 +46,7 @@
 //-----------------------------------------------------------------
 // Defines
 //-----------------------------------------------------------------
+#define MEM_BASE             0x10000000
 
 //-----------------------------------------------------------------
 // Locals
@@ -58,15 +59,16 @@ int main(int argc, char **argv, char **env)
 {
     int c;
     int err;
-    unsigned int loadAddr = 0x00000000;
+    unsigned int loadAddr = MEM_BASE;
     char *filename = NULL;
     int help = 0;
     int exitcode = 0;
     int cycles = -1;
+    int intr_after = -1;
 
     Verilated::commandArgs(argc, argv);
 
-    while ((c = getopt (argc, argv, "f:l:c:")) != -1)
+    while ((c = getopt (argc, argv, "f:l:c:i:")) != -1)
     {
         switch(c)
         {
@@ -79,11 +81,20 @@ int main(int argc, char **argv, char **env)
             case 'c':
                  cycles = strtoul(optarg, NULL, 0);
                  break;
+            case 'i':
+                 intr_after = strtoul(optarg, NULL, 0);
+                 break;
             case '?':
             default:
-                help = 1;	
+                help = 1;    
                 break;
         }
+    }
+
+    if (loadAddr < MEM_BASE)
+    {
+        fprintf (stderr,"Load address incorrect (0x%x)\n", loadAddr); 
+        exit(-1);
     }
 
     if (help)
@@ -93,6 +104,7 @@ int main(int argc, char **argv, char **env)
         fprintf (stderr,"-l 0xnnnn   = Executable load address\n");
         fprintf (stderr,"-f filename = Executable to load\n");
         fprintf (stderr,"-c num      = Max number of cycles\n");
+        fprintf (stderr,"-i num      = Generate interrupt after num cycles\n");
  
         exit(0);
     }
@@ -140,7 +152,7 @@ int main(int argc, char **argv, char **env)
     }
 
     // Run
-    err = top_run(cycles);
+    err = top_run(cycles, intr_after);
 
     if (err == TOP_RES_FAULT)
         printf("FAULT PC %x!\n", top_getpc());
@@ -148,5 +160,5 @@ int main(int argc, char **argv, char **env)
     top_done();
 
     printf("Exit\n");
-    exit(0);
+    exit((err == TOP_RES_FAULT) ? 1 : 0);
 }

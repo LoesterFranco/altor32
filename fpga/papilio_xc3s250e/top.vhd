@@ -1,9 +1,8 @@
 -------------------------------------------------------------------
 --                           AltOR32 
 --              Alternative Lightweight OpenRisc 
---                            V0.1
 --                     Ultra-Embedded.com
---                   Copyright 2011 - 2012
+--                   Copyright 2011 - 2013
 --
 --               Email: admin@ultra-embedded.com
 --
@@ -14,7 +13,7 @@
 -- for more details.
 -------------------------------------------------------------------
 --
--- Copyright (C) 2011 - 2012 Ultra-Embedded.com
+-- Copyright (C) 2011 - 2013 Ultra-Embedded.com
 --
 -- This source file may be used and distributed without         
 -- restriction provided that this copyright statement is not    
@@ -36,7 +35,7 @@
 -- You should have received a copy of the GNU Lesser General    
 -- Public License along with this source; if not, write to the 
 -- Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
--- Boston, MA  02111-1307  USA              
+-- Boston, MA  02111-1307  USA
 -------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
@@ -135,7 +134,7 @@ signal gpio_w2c_port_raw    : std_logic_vector(15 downto 0);
 signal gpio_w2c_port_out_en : std_logic_vector(15 downto 0);
 
 -----------------------------------------------
--- I/O Register Map (from 0x30000000)
+-- I/O Register Map (from 0x13000000)
 -----------------------------------------------
 constant GPIO_W1A_OUT      : std_logic_vector(7 downto 0)  := X"10";
 constant GPIO_W1A_IN       : std_logic_vector(7 downto 0)  := X"14";
@@ -156,7 +155,7 @@ begin
 -----------------------------------------------
 cpu_clk <= clk;
 
--- 24KB Block RAM (0x0000 - 0x6000)
+-- 24KB Block RAM (0x10000000 - 0x10006000)
 U2_RAM: ram 
 generic map 
 (
@@ -180,13 +179,16 @@ port map
 );   
 
 -- CPU SOC
-U3_CPU: alt_soc
+U3_CPU: soc_core
 generic map 
 (
     CLK_KHZ             => (CPU_MHZ * 1000),
     UART_BAUD           => 115200,
-    BOOT_VECTOR         => X"00000000",   
-    ISR_VECTOR          => X"00002000",      
+    BOOT_VECTOR         => X"10000000",   
+    ISR_VECTOR          => X"10002000",
+    REGISTER_FILE_TYPE  => "XILINX",
+    ENABLE_UART         => "ENABLED",
+    ENABLE_SPI_FLASH    => "ENABLED",
     EXTERNAL_INTERRUPTS => 1
 )
 port map 
@@ -232,9 +234,6 @@ port map
     flash_si_o          => flash_si,
     flash_so_i          => flash_so,
     flash_sck_o         => flash_sck,
-    
-    -- Debug Access
-    dbg_pc_o            => open,
     
     -- Debug UART Output
     dbg_uart_data_o     => open,

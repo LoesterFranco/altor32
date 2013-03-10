@@ -1,9 +1,8 @@
 //-----------------------------------------------------------------
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
-//                            V0.1
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -14,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -36,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
@@ -47,33 +46,31 @@
 //-----------------------------------------------------------------
 // Module
 //-----------------------------------------------------------------
-module altor32 
-( 
+module cpu
+(
     // General
     clk_i,
-    rst_i, 
-    en_i, 
-    intr_i, 
-    fault_o, 
+    rst_i,
+    en_i,
+    intr_i,
+    fault_o,
     break_o,
 
     // Memory Interface
-    mem_addr_o, 
-    mem_data_out_o, 
-    mem_data_in_i, 
-    mem_wr_o, 
-    mem_rd_o, 
-    mem_pause_i,
-    
-    // Status/Debug
-    dbg_pc_o
+    mem_addr_o,
+    mem_data_out_o,
+    mem_data_in_i,
+    mem_wr_o,
+    mem_rd_o,
+    mem_pause_i
 );
 
 //-----------------------------------------------------------------
 // Params
 //-----------------------------------------------------------------
-parameter [31:0]    BOOT_VECTOR     = 32'h00000000;
-parameter [31:0]    ISR_VECTOR      = 32'h00000000;
+parameter [31:0]    BOOT_VECTOR         = 32'h00000000;
+parameter [31:0]    ISR_VECTOR          = 32'h00000000;
+parameter           REGISTER_FILE_TYPE  = "SIMULATION";
 
 //-----------------------------------------------------------------
 // I/O
@@ -94,13 +91,10 @@ output [3:0]        mem_wr_o /*verilator public*/;
 output              mem_rd_o /*verilator public*/;
 input               mem_pause_i /*verilator public*/;
 
-// Status/Debug
-output [31:0]       dbg_pc_o /*verilator public*/;
-    
 //-----------------------------------------------------------------
 // Registers
 //-----------------------------------------------------------------
-  
+
 // Current program counter
 reg [31:0] r_pc;
 
@@ -188,6 +182,10 @@ reg [31:0] alu_a;
 // ALU input B
 reg [31:0] alu_b;
 
+// ALU Carry
+wire alu_carry_out;
+wire alu_carry_update;
+
 // ALU output
 wire [31:0] alu_result;
 
@@ -229,6 +227,17 @@ reg [31:0] r_pc_branch;
 // Flush next instruction from the pipeline
 reg r_flush_next;
 
+// Hardware multiplier
+`ifdef CONF_MULT_HW
+    reg        r_mult;
+    reg        r_multhi;
+    reg        d_mult;
+    reg        d_multhi;
+    reg [31:0] mult_a;
+    reg [31:0] mult_b;
+    reg [63:0] mult_res;
+`endif
+
 //-----------------------------------------------------------------
 // Instantiation
 //-----------------------------------------------------------------
@@ -236,42 +245,98 @@ reg r_flush_next;
 // ALU
 altor32_alu alu
 (
-    .input_a(alu_a), 
-    .input_b(alu_b), 
-    .func(alu_func), 
-    .result(alu_result)
+    .input_a(alu_a),
+    .input_b(alu_b),
+    .carry_in(r_sr[`OR32_SR_CY]),
+    .func(alu_func),
+    .result(alu_result),
+    .carry_out(alu_carry_out),
+    .carry_update(alu_carry_update)
 );
 
 // Register file
-`ifdef CONF_TARGET_SIM
-altor32_regfile_sim
-`else
-altor32_regfile_xil
+generate
+if (REGISTER_FILE_TYPE == "XILINX")
+begin
+    altor32_regfile_xil
+    reg_bank
+    (
+        // Clocking
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .en_i(1'b1),
+        .wr_i(r_writeback),
+
+        // Tri-port
+        .rs_i(r_ra),
+        .rt_i(r_rb),
+        .rd_i(d2_rd_wb),
+        .reg_rs_o(r_reg_ra),
+        .reg_rt_o(r_reg_rb),
+        .reg_rd_i(r_reg_rd)
+    );
+end
+else if (REGISTER_FILE_TYPE == "ALTERA")
+begin
+    altor32_regfile_alt
+    reg_bank
+    (
+        // Clocking
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .en_i(1'b1),
+        .wr_i(r_writeback),
+
+        // Tri-port
+        .rs_i(r_ra),
+        .rt_i(r_rb),
+        .rd_i(d2_rd_wb),
+        .reg_rs_o(r_reg_ra),
+        .reg_rt_o(r_reg_rb),
+        .reg_rd_i(r_reg_rd)
+    );
+end
+else
+begin
+    altor32_regfile_sim
+    reg_bank
+    (
+        // Clocking
+        .clk_i(clk_i),
+        .rst_i(rst_i),
+        .en_i(1'b1),
+        .wr_i(r_writeback),
+
+        // Tri-port
+        .rs_i(r_ra),
+        .rt_i(r_rb),
+        .rd_i(d2_rd_wb),
+        .reg_rs_o(r_reg_ra),
+        .reg_rt_o(r_reg_rb),
+        .reg_rd_i(r_reg_rd)
+    );
+end
+endgenerate
+
+// Hardware multiplier
+`ifdef CONF_MULT_HW
+    hw_multiplier
+    mult_hw
+    (
+        .clk(clk_i),
+        .a(mult_a),
+        .b(mult_b),
+        .p(mult_res)
+    );
 `endif
-reg_bank
-(
-    // Clocking
-    .clk_i(clk_i), 
-    .rst_i(rst_i), 
-    .en_i(1'b1), 
-    .wr_i(r_writeback), 
-    
-    // Tri-port
-    .rs_i(r_ra), 
-    .rt_i(r_rb), 
-    .rd_i(d2_rd_wb), 
-    .reg_rs_o(r_reg_ra), 
-    .reg_rt_o(r_reg_rb), 
-    .reg_rd_i(r_reg_rd)
-);
 
 //-------------------------------------------------------------------
 // Pipeline
 //-------------------------------------------------------------------
 always @ (posedge clk_i or posedge rst_i )
-begin 
-   if (rst_i == 1'b1) 
-   begin 
+begin
+   if (rst_i == 1'b1)
+   begin
        d_opcode         <= 32'h00000000;
        d_rd_wb          <= 5'b00000;
        d2_rd_wb         <= 5'b00000;
@@ -282,9 +347,13 @@ begin
        d_mem_access     <= 1'b0;
        d_pc             <= 32'h00000000;
        mem_addr_last    <= 32'h00000000;
+`ifdef CONF_MULT_HW
+       d_mult           <= 1'b0;
+       d_multhi         <= 1'b0;
+`endif       
    end
    else if ((en_i == 1'b1) && (mem_pause_i == 1'b0))
-   begin 
+   begin
        d_opcode         <= r_opcode;
        d_rd_wb          <= r_rd_wb;
        d2_rd_wb         <= d_rd_wb;
@@ -294,10 +363,14 @@ begin
        d_mem_offset     <= mem_offset;
        d_mem_access     <= r_mem_access;
        d_pc             <= r_pc;
-       
+`ifdef CONF_MULT_HW
+       d_mult           <= r_mult;
+       d_multhi         <= r_multhi;
+`endif         
+
        if (r_mem_access == 1'b1)
            mem_addr_last <= mem_addr;
-       else 
+       else
            mem_addr_last <= r_pc;
    end
 end
@@ -340,46 +413,53 @@ reg v_mem_access;
 reg v_load_stall;
 reg v_no_intr;
 
-always @ (posedge clk_i or posedge rst_i) 
-begin 
-   if (rst_i == 1'b1) 
-   begin 
+always @ (posedge clk_i or posedge rst_i)
+begin
+   if (rst_i == 1'b1)
+   begin
        r_pc                 <= BOOT_VECTOR + `VECTOR_RESET;
-       
+
        r_epc                <= 32'h00000000;
        r_sr                 <= 32'h00000000;
-       r_esr                <= 32'h00000000;       
+       r_esr                <= 32'h00000000;
        r_rd_wb              <= 5'b00000;
        r_load_inst          <= 1'b0;
-       
+
        r_branch_dslot       <= 1'b0;
        r_pc_branch          <= 32'h00000000;
-       
+
        // Flush first instruction execute to allow fetch to occur
        r_flush_next         <= 1'b1;
-            
-       r_opcode             <= 32'h00000000;       
-       
+
+       r_opcode             <= 32'h00000000;
+
        // Default to no ALU operation
-       alu_func             <= `ALU_NONE;       
-       
+       alu_func             <= `ALU_NONE;
+
        mem_addr             <= 32'h00000000;
        mem_data_out         <= 32'h00000000;
        mem_rd               <= 1'b0;
        mem_wr               <= 4'b0000;
        mem_offset           <= 2'b00;
-       
+
        fault_o              <= 1'b0;
        break_o              <= 1'b0;
        r_mem_access         <= 1'b0;
+
+`ifdef CONF_MULT_HW
+       r_mult               <= 1'b0;
+       r_multhi             <= 1'b0;
+       mult_a               <= 32'h00000000;
+       mult_b               <= 32'h00000000;
+`endif
    end
    // Enabled & memory not busy
-   else if ((en_i == 1'b1) && (mem_pause_i == 1'b0)) 
-   begin 
-   
+   else if ((en_i == 1'b1) && (mem_pause_i == 1'b0))
+   begin
+
        mem_rd       <= 1'b0;
        mem_wr       <= 4'b0000;
-       break_o      <= 1'b0;   
+       break_o      <= 1'b0;
 
        v_exception          = 1'b0;
        v_vector             = 32'h00000000;
@@ -391,17 +471,17 @@ begin
        v_load_stall         = 1'b0;
        v_no_intr            = 1'b0;
        v_mem_data_in        = mem_data_in_i;
-       
+
 `ifdef CONF_CORE_DEBUG
        if (d_mem_access == 1'b0)
             $display("%08x: %08x", r_pc, v_mem_data_in);
        else
             $display("%08x: Data In %08x", r_pc, v_mem_data_in);
-`endif       
-       
+`endif
+
        // If memory access was done, check for no instruction to process.
        // As memory access has a 1 cycle latency, invalid mem_data_in_i is
-       // aligned with d_mem_access not r_mem_access.       
+       // aligned with d_mem_access not r_mem_access.
        if (d_mem_access)
        begin
            v_mem_data_in = `OPCODE_INST_BUBBLE;
@@ -409,7 +489,7 @@ begin
             $display(" - BUBBLE due to no instruction because of data access");
 `endif
        end
-       
+
        // Flush next instruction for some reason
        if (r_flush_next)
        begin
@@ -418,9 +498,9 @@ begin
             $display(" - BUBBLE due to pipeline flush request");
 `endif
        end
-       
+
        r_flush_next          <= 1'b0;
-       
+
        // Decode opcode
        v_rd                 = v_mem_data_in[25:21];
        v_ra                 = v_mem_data_in[20:16];
@@ -430,173 +510,258 @@ begin
        v_shift_op           = v_mem_data_in[7:6];
        v_target             = sign_extend_imm26(v_mem_data_in[25:0]);
        v_store_imm          = sign_extend_imm16({v_mem_data_in[25:21],v_mem_data_in[10:0]});
-       
+
        // Signed & unsigned imm -> 32-bits
        v_imm                = v_mem_data_in[15:0];
        v_imm_int32          = sign_extend_imm16(v_imm);
        v_imm_uint32         = extend_imm16(v_imm);
-       
+
        // Load register[ra]
        v_reg_ra             = r_reg_ra;
-       
+
        // Load register[rb]
        v_reg_rb             = r_reg_rb;
-       
+
        //---------------------------------------------------------------
        // Hazard detection
        //---------------------------------------------------------------
-       
+
        // Register[ra] hazard detection & forwarding logic
-       // (higher priority = latest results!)       
-       if (v_ra != 5'b00000) 
+       // (higher priority = latest results!)
+       if (v_ra != 5'b00000)
        begin
-           // Operand from load result (not yet ready) 
+           // Operand from load result (not yet ready)
            if (r_load_inst && v_ra == r_rd_wb)
            begin
-                v_mem_data_in = `OPCODE_INST_BUBBLE; 
+                v_mem_data_in = `OPCODE_INST_BUBBLE;
                 v_load_stall  = 1'b1;
-                
-`ifdef CONF_CORE_DEBUG
+
+`ifdef CONF_CORE_DEBUG                
                 $display(" - BUBBLE due to load result not ready R[%d]", v_ra);
 `endif
            end
-           else if (v_ra == r_rd_wb) 
+           else if (v_ra == r_rd_wb)
            begin
+           
+`ifdef CONF_MULT_HW
+               if (r_mult || r_multhi)
+               begin
+                    // Result from multiplier but not ready yet
+                    v_mem_data_in = `OPCODE_INST_BUBBLE;
+                    
+                    // Rewind program counter to replay failed instruction
+                    v_load_stall  = 1'b1;
+                    
+                    // Flush next instruction which will be bubbled instruction + 4                    
+                    r_flush_next <= 1'b1;
+                    
+`ifdef CONF_CORE_DEBUG
+                    $display("%08x: rA not ready from multiplier, stall", r_pc);
+`endif                    
+               end
+               else
+`endif               
                // Result from memory / other
                if (alu_func == `ALU_NONE)
                begin
                     v_reg_ra = r_reg_result;
                end
                // Result from ALU
-               else 
+               else
                begin
                     v_reg_ra = alu_result;
                end
-               
+
 `ifdef CONF_CORE_DEBUG
                $display(" - rA[%d] forwarded 0x%08x", v_ra, v_reg_ra);
-`endif                      
-           end 
+`endif
+           end
            else if (v_ra == d_rd_wb)
-           begin 
-          
+           begin
+
+`ifdef CONF_MULT_HW
+               // Result from multiplier
+               if (d_multhi == 1'b1)
+               begin
+                    v_reg_ra = mult_res[63:32];
+`ifdef CONF_CORE_DEBUG                    
+                    $display("%08x: rA forwarded from multiplier (HI), %08x", r_pc, v_reg_ra);
+`endif                    
+               end
+               else if (d_mult == 1'b1)
+               begin
+                    v_reg_ra = mult_res[31:0];
+`ifdef CONF_CORE_DEBUG                    
+                    $display("%08x: rA forwarded from multiplier (LO), %08x", r_pc, v_reg_ra);
+`endif                    
+               end
+               else
+`endif               
                // Result from memory / other
                if (d_alu_func == `ALU_NONE)
                begin
                     v_reg_ra = d_reg_result;
                end
                // Result from ALU
-               else 
+               else
                begin
                     v_reg_ra = d_alu_result;
                end
-               
+
 `ifdef CONF_CORE_DEBUG
                $display(" - rA[%d] forwarded 0x%08x", v_ra, v_reg_ra);
-`endif                  
-           end 
+`endif
+           end
            else if (v_ra == d2_rd_wb)
            begin
-                 v_reg_ra = r_reg_rd;          
-                 
+                 v_reg_ra = r_reg_rd;
+
 `ifdef CONF_CORE_DEBUG
                $display(" - rA[%d] forwarded 0x%08x", v_ra, v_reg_ra);
-`endif                        
+`endif
            end
-       end 
-       
+       end
+
        // Register[rb] hazard detection & forwarding logic
-       // (higher priority = latest results!)               
-       if (v_rb != 5'b00000) 
-       begin 
-           // Operand from load result (not yet ready) 
+       // (higher priority = latest results!)
+       if (v_rb != 5'b00000)
+       begin
+           // Operand from load result (not yet ready)
            if (r_load_inst && v_rb == r_rd_wb)
-           begin                
+           begin
                 v_mem_data_in = `OPCODE_INST_BUBBLE;
                 v_load_stall  = 1'b1;
-                
+
 `ifdef CONF_CORE_DEBUG
                 $display(" - BUBBLE due to load result not ready R[%d]", v_rb);
-`endif            
+`endif
            end
-           else if (v_rb == r_rd_wb) 
-           begin 
+           else if (v_rb == r_rd_wb)
+           begin
+           
+`ifdef CONF_MULT_HW
+               if (r_mult || r_multhi)
+               begin
+                                   
+                    // Result from multiplier but not ready yet
+                    v_mem_data_in = `OPCODE_INST_BUBBLE;
+                    
+                    // Rewind program counter to replay failed instruction
+                    v_load_stall  = 1'b1;
+                    
+                    // Flush next instruction which will be bubbled instruction + 4                    
+                    r_flush_next <= 1'b1;
+
+`ifdef CONF_CORE_DEBUG                    
+                    $display("%08x: rB not ready from multiplier, stall", r_pc);
+`endif                    
+               end
+               else
+`endif             
                // Result from memory / other
                if (alu_func == `ALU_NONE)
-               begin 
+               begin
                     v_reg_rb = r_reg_result;
                end
                // Result from ALU
-               else 
+               else
                begin
                     v_reg_rb = alu_result;
                end
-               
+
 `ifdef CONF_CORE_DEBUG
                $display(" - rB[%d] forwarded 0x%08x", v_rb, v_reg_rb);
-`endif                
-           end 
-           else if (v_rb == d_rd_wb) 
-           begin 
-           
+`endif
+           end
+           else if (v_rb == d_rd_wb)
+           begin
+
+`ifdef CONF_MULT_HW
+               // Result from multiplier
+               if (d_multhi == 1'b1)
+               begin
+                    v_reg_rb = mult_res[63:32];
+`ifdef CONF_CORE_DEBUG                    
+                    $display("%08x: rA forwarded from multiplier (HI), %08x", r_pc, v_reg_rb);
+`endif                    
+               end
+               else if (d_mult == 1'b1)
+               begin
+                    v_reg_rb = mult_res[31:0];
+`ifdef CONF_CORE_DEBUG                    
+                    $display("%08x: rA forwarded from multiplier (LO), %08x", r_pc, v_reg_rb);
+`endif                    
+               end
+               else               
+`endif
                // Result from non ALU function
                if (d_alu_func == `ALU_NONE)
                begin
                     v_reg_rb = d_reg_result;
                end
                // Result from ALU
-               else 
+               else
                begin
                     v_reg_rb = d_alu_result;
                end
-               
+
 `ifdef CONF_CORE_DEBUG
                $display(" - rB[%d] forwarded 0x%08x", v_rb, v_reg_rb);
-`endif                          
-           end 
-           else if (v_rb == d2_rd_wb) 
+`endif
+           end
+           else if (v_rb == d2_rd_wb)
            begin
                 v_reg_rb = r_reg_rd;
-                
+
 `ifdef CONF_CORE_DEBUG
                $display(" - rB[%d] forwarded 0x%08x", v_rb, v_reg_rb);
-`endif                     
+`endif
            end
        end
 
        // Store opcode (after possible bubble generation)
        r_opcode            <= v_mem_data_in;
-       
+
        // Decode instruction
        v_inst               = {2'b00,v_mem_data_in[31:26]};
-       
+
        // Shift ammount (from register[rb])
        v_shift_val          = {26'b00,v_reg_rb[5:0]};
 
        // Shift ammount (from immediate)
        v_shift_imm          = {26'b00,v_imm[5:0]};
-       
+
        // MTSPR/MFSPR operand
        v_mxspr_imm          =  (v_reg_ra[15:0] | {5'b00000,v_mem_data_in[10:0]});
-       
+
        // Zero result
        v_reg_result         = 32'h00000000;
-       
+
        // Update PC to next value
        v_pc                 = (r_pc + 4);
-       
+
        // Default to no ALU operation
        alu_func <= `ALU_NONE;
-       
+
        // Default target is r_rd
-       r_rd_wb              <= r_rd;       
-       
+       r_rd_wb              <= r_rd;
+
        // Reset load instruction state
        r_load_inst          <= 1'b0;
-       
+
        // Reset branch delay slot status
        r_branch_dslot       <= 1'b0;
        
+`ifdef CONF_MULT_HW       
+       // Result from multiplier        
+       r_mult               <= 1'b0;
+       r_multhi             <= 1'b0;
+`endif
+
+       // Latch carry if updated
+       if (alu_carry_update)
+            v_sr[`OR32_SR_CY] = alu_carry_out;
+
        //---------------------------------------------------------------
        // Execute instruction
        //---------------------------------------------------------------
@@ -607,239 +772,295 @@ begin
                 // as this will result in pipeline issues.
                 v_no_intr = 1'b1;
            end
-           `INST_OR32_ALU : 
+           `INST_OR32_ALU :
            begin
                case (v_alu_op)
                    `INST_OR32_ADD: // l.add
-                   begin 
+                   begin
                        alu_func <= `ALU_ADD;
                        alu_a <= v_reg_ra;
                        alu_b <= v_reg_rb;
                        v_write_rd = 1'b1;
                    end
                    
+                   `INST_OR32_ADDC: // l.addc
+                   begin
+                       alu_func <= `ALU_ADDC;
+                       alu_a <= v_reg_ra;
+                       alu_b <= v_reg_rb;
+                       v_write_rd = 1'b1;
+                   end                   
+
                    `INST_OR32_AND: // l.and
-                   begin 
+                   begin
                        alu_func <= `ALU_AND;
                        alu_a <= v_reg_ra;
                        alu_b <= v_reg_rb;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    `INST_OR32_OR: // l.or
-                   begin 
+                   begin
                        alu_func <= `ALU_OR;
                        alu_a <= v_reg_ra;
                        alu_b <= v_reg_rb;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    `INST_OR32_SLL: // l.sll
-                   begin 
+                   begin
                        alu_func <= `ALU_SHIFTL;
                        alu_a <= v_reg_ra;
                        alu_b <= v_shift_val;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    `INST_OR32_SRA: // l.sra
-                   begin 
+                   begin
                        alu_func <= `ALU_SHIRTR_ARITH;
                        alu_a <= v_reg_ra;
                        alu_b <= v_shift_val;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    `INST_OR32_SRL: // l.srl
-                   begin 
+                   begin
                        alu_func <= `ALU_SHIFTR;
                        alu_a <= v_reg_ra;
                        alu_b <= v_shift_val;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    `INST_OR32_SUB: // l.sub
-                   begin 
+                   begin
                        alu_func <= `ALU_SUB;
                        alu_a <= v_reg_ra;
                        alu_b <= v_reg_rb;
                        v_write_rd = 1'b1;
-                   end                       
-                   
+                   end
+
                    `INST_OR32_XOR: // l.xor
-                   begin 
+                   begin
                        alu_func <= `ALU_XOR;
                        alu_a <= v_reg_ra;
                        alu_b <= v_reg_rb;
                        v_write_rd = 1'b1;
                    end
                    
+`ifdef CONF_MULT_HW
+                   `INST_OR32_MUL:  // l.mul
+                   begin
+                        // Rd = res[31:0]
+                        r_mult <= 1'b1;
+                        mult_a <= v_reg_ra;
+                        mult_b <= v_reg_rb;
+                        v_write_rd = 1'b1;
+                   end
+                   `INST_OR32_MULU: // l.mulu
+                   begin
+                        // Rd = res[63:32]
+                        r_multhi <= 1'b1;
+                        mult_a <= v_reg_ra;
+                        mult_b <= v_reg_rb;
+                        v_write_rd = 1'b1;
+                   end                   
+`endif                   
+
                    default:
-                   begin 
+                   begin
                        fault_o <= 1'b1;
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                    end
                endcase
            end
-           
+
            `INST_OR32_ADDI: // l.addi
-           begin 
+           begin
                alu_func <= `ALU_ADD;
                alu_a <= v_reg_ra;
                alu_b <= v_imm_int32;
                v_write_rd = 1'b1;
            end
-           
+
            `INST_OR32_ANDI: // l.andi
-           begin 
+           begin
                alu_func <= `ALU_AND;
                alu_a <= v_reg_ra;
                alu_b <= v_imm_uint32;
                v_write_rd = 1'b1;
-           end           
-           
+           end
+
            `INST_OR32_BF: // l.bf
            begin
                if (v_sr[`OR32_SR_F] == 1'b1)
                     v_branch = 1'b1;
            end
-           
+
            `INST_OR32_BNF: // l.bnf
            begin
                if (v_sr[`OR32_SR_F] == 1'b0)
                     v_branch = 1'b1;
            end
-           
+
            `INST_OR32_J: // l.j
            begin
                v_branch = 1'b1;
-           end           
-           
+           end
+
            `INST_OR32_JAL: // l.jal
-           begin 
+           begin
                v_reg_result = v_pc;
                v_write_rd = 1'b1;
                r_rd_wb <= 5'b01001; // Write to REG_9_LR
-               
+
                v_branch = 1'b1;
            end
-          
+
           `INST_OR32_JALR: // l.jalr
-           begin 
+           begin
                v_reg_result = v_pc;
                v_write_rd = 1'b1;
                r_rd_wb <= 5'b01001; // Write to REG_9_LR
-               
+
                v_pc = v_reg_rb;
                v_jmp = 1;
            end
-    
+
           `INST_OR32_JR: // l.jr
-           begin 
+           begin
                v_pc = v_reg_rb;
                v_jmp = 1;
-           end          
-          
-           // l.lbs l.lhs l.lws l.lbz l.lhz l.lwz          
+           end
+
+           // l.lbs l.lhs l.lws l.lbz l.lhz l.lwz
            `INST_OR32_LBS, `INST_OR32_LHS, `INST_OR32_LWS, `INST_OR32_LBZ, `INST_OR32_LHZ, `INST_OR32_LWZ :
-           begin 
+           begin
                v_mem_addr = (v_reg_ra + v_imm_int32);
                mem_addr <= {v_mem_addr[31:2],2'b00};
                mem_data_out <= 32'h00000000;
                mem_rd <= 1'b1;
                mem_offset <= v_mem_addr[1:0];
                v_write_rd = 1'b1;
-               v_mem_access = 1'b1;               
+               v_mem_access = 1'b1;
                r_load_inst <= 1'b1;
-               
+
 `ifdef CONF_CORE_DEBUG
                $display(" - Load from 0x%08x", {v_mem_addr[31:2],2'b00});
 `endif
-           end          
-          
+           end
+
           `INST_OR32_MFSPR: // l.mfspr
-          begin 
+          begin
                case (v_mxspr_imm)
                    // SR - Supervision register
                    `SPR_REG_SR:
-                   begin 
+                   begin
                        v_reg_result = v_sr;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    // EPCR - EPC Exception saved PC
                    `SPR_REG_EPCR:
-                   begin 
+                   begin
                        v_reg_result = r_epc;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    // ESR - Exception saved SR
                    `SPR_REG_ESR:
-                   begin 
+                   begin
                        v_reg_result = r_esr;
                        v_write_rd = 1'b1;
                    end
-                   
+
+`ifdef CONF_MULT_HW
+                   `SPR_REG_MACLO:
+                   begin
+                       v_reg_result = mult_res[31:0];
+                       v_write_rd = 1'b1;
+                       
+                       // Accessing multiplier result before it is ready?
+                       if (r_mult || r_multhi)
+                       begin
+                            fault_o <= 1'b1;
+                            v_exception = 1'b1;
+                            v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;                       
+                       end                       
+                   end
+
+                   `SPR_REG_MACHI:
+                   begin
+                       v_reg_result = mult_res[63:32];
+                       v_write_rd = 1'b1;
+            
+                       // Accessing multiplier result before it is ready?
+                       if (r_mult || r_multhi)
+                       begin
+                            fault_o <= 1'b1;
+                            v_exception = 1'b1;
+                            v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;                       
+                       end
+                   end
+`endif
                    default:
-                   begin 
+                   begin
                        fault_o <= 1'b1;
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                    end
-               endcase          
-           end              
-                 
+               endcase
+           end
+
           `INST_OR32_MTSPR: // l.mtspr
-          begin 
+          begin
                case (v_mxspr_imm)
                    // SR - Supervision register
                    `SPR_REG_SR:
-                   begin 
+                   begin
                        v_sr = v_reg_rb;
                    end
-                   
+
                    // EPCR - EPC Exception saved PC
                    `SPR_REG_EPCR:
-                   begin 
+                   begin
                        r_epc <= v_reg_rb;
                    end
-                   
+
                    // ESR - Exception saved SR
                    `SPR_REG_ESR:
-                   begin 
+                   begin
                        r_esr <= v_reg_rb;
                    end
-                   
+
                    default:
-                   begin 
+                   begin
                        fault_o <= 1'b1;
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                    end
-               endcase          
-           end                 
-          
-           `INST_OR32_MOVHI: // l.movhi 
-           begin 
+               endcase
+           end
+
+           `INST_OR32_MOVHI: // l.movhi
+           begin
                v_reg_result = {v_imm,16'h0000};
                v_write_rd = 1'b1;
-           end          
-          
+           end
+
            `INST_OR32_NOP: // l.nop
-           begin 
-              
-           end              
-          
+           begin
+
+           end
+
            `INST_OR32_ORI: // l.ori
-           begin 
+           begin
                alu_func <= `ALU_OR;
                alu_a <= v_reg_ra;
                alu_b <= v_imm_uint32;
                v_write_rd = 1'b1;
-           end          
-          
+           end
+
            `INST_OR32_RFE: // l.rfe
            begin
                 // TODO: This instruction should not have a delay slot
@@ -847,401 +1068,401 @@ begin
                 v_pc      = r_epc;
                 v_sr      = r_esr;
                 v_jmp     = 1;
-           end                 
-          
+           end
+
           `INST_OR32_SHIFTI :
-          begin 
+          begin
                case (v_shift_op)
                    `INST_OR32_SLLI: // l.slli
-                   begin 
+                   begin
                        alu_func <= `ALU_SHIFTL;
                        alu_a <= v_reg_ra;
                        alu_b <= v_shift_imm;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    `INST_OR32_SRAI: // l.srai
-                   begin 
+                   begin
                        alu_func <= `ALU_SHIRTR_ARITH;
                        alu_a <= v_reg_ra;
                        alu_b <= v_shift_imm;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    `INST_OR32_SRLI: // l.srli
-                     begin 
+                     begin
                        alu_func <= `ALU_SHIFTR;
                        alu_a <= v_reg_ra;
                        alu_b <= v_shift_imm;
                        v_write_rd = 1'b1;
                    end
-                   
+
                    default:
-                   begin 
+                   begin
                        fault_o <= 1'b1;
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                    end
-               endcase          
+               endcase
            end
-           
-           `INST_OR32_SB: 
-           begin 
+
+           `INST_OR32_SB:
+           begin
                v_mem_addr = (v_reg_ra + v_store_imm);
                mem_addr <= {v_mem_addr[31:2],2'b00};
                case (v_mem_addr[1:0])
-                   2'b00 : 
-                   begin 
+                   2'b00 :
+                   begin
                        mem_data_out <= {v_reg_rb[7:0],24'h000000};
                        mem_wr <= 4'b1000;
                        v_mem_access = 1'b1;
                    end
-                   2'b01 : 
-                   begin 
+                   2'b01 :
+                   begin
                        mem_data_out <= {{8'h00,v_reg_rb[7:0]},16'h0000};
                        mem_wr <= 4'b0100;
                        v_mem_access = 1'b1;
                    end
-                   2'b10 : 
-                   begin 
+                   2'b10 :
+                   begin
                        mem_data_out <= {{16'h0000,v_reg_rb[7:0]},8'h00};
                        mem_wr <= 4'b0010;
                        v_mem_access = 1'b1;
                    end
-                   2'b11 : 
-                   begin 
+                   2'b11 :
+                   begin
                        mem_data_out <= {24'h000000,v_reg_rb[7:0]};
                        mem_wr <= 4'b0001;
                        v_mem_access = 1'b1;
                    end
-                   default : 
-                   begin 
+                   default :
+                   begin
                        mem_data_out <= 32'h00000000;
                        mem_wr <= 4'b0000;
                    end
                endcase
-           end          
-          
+           end
+
           `INST_OR32_SFXX, `INST_OR32_SFXXI:
           begin
                case (v_sfxx_op)
                    `INST_OR32_SFEQ: // l.sfeq
-                   begin 
+                   begin
                         if (v_reg_ra == v_reg_rb)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
                             v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFEQI: // l.sfeqi
-                   begin 
+                   begin
                         if (v_reg_ra == v_imm_int32)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
                             v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGES: // l.sfges
-                   begin 
+                   begin
                         if (greater_than_equal_signed(v_reg_ra, v_reg_rb) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGESI: // l.sfgesi
-                   begin 
+                   begin
                         if (greater_than_equal_signed(v_reg_ra, v_imm_int32) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGEU: // l.sfgeu
-                   begin 
+                   begin
                         if (v_reg_ra >= v_reg_rb)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0;                        
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGEUI: // l.sfgeui
-                   begin 
+                   begin
                         if (v_reg_ra >= v_imm_int32)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGTS: // l.sfgts
-                   begin 
+                   begin
                         if (greater_than_signed(v_reg_ra, v_reg_rb) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGTSI: // l.sfgtsi
-                   begin 
+                   begin
                         if (greater_than_signed(v_reg_ra, v_imm_int32) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGTU: // l.sfgtu
-                   begin 
+                   begin
                         if (v_reg_ra > v_reg_rb)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFGTUI: // l.sfgtui
-                   begin 
+                   begin
                         if (v_reg_ra > v_imm_int32)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLES: // l.sfles
-                   begin 
+                   begin
                         if (less_than_equal_signed(v_reg_ra, v_reg_rb) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLESI: // l.sflesi
-                   begin 
+                   begin
                         if (less_than_equal_signed(v_reg_ra, v_imm_int32) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLEU: // l.sfleu
-                   begin 
+                   begin
                         if (v_reg_ra <= v_reg_rb)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLEUI: // l.sfleui
-                   begin 
+                   begin
                         if (v_reg_ra <= v_imm_int32)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLTS: // l.sflts
-                   begin 
+                   begin
                         if (less_than_signed(v_reg_ra, v_reg_rb) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0;                             
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLTSI: // l.sfltsi
-                   begin 
+                   begin
                         if (less_than_signed(v_reg_ra, v_imm_int32) == 1'b1)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLTU: // l.sfltu
-                   begin 
+                   begin
                         if (v_reg_ra < v_reg_rb)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFLTUI: // l.sfltui
-                   begin 
+                   begin
                         if (v_reg_ra < v_imm_int32)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
-                            v_sr[`OR32_SR_F] = 1'b0; 
+                            v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFNE: // l.sfne
-                   begin 
+                   begin
                         if (v_reg_ra != v_reg_rb)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
                             v_sr[`OR32_SR_F] = 1'b0;
                    end
-                   
+
                    `INST_OR32_SFNEI: // l.sfnei
-                   begin 
+                   begin
                         if (v_reg_ra != v_imm_int32)
                             v_sr[`OR32_SR_F] = 1'b1;
                         else
                             v_sr[`OR32_SR_F] = 1'b0;
-                   end                                                                     
-                   
+                   end
+
                    default:
-                   begin 
+                   begin
                        fault_o <= 1'b1;
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                    end
-               endcase          
+               endcase
            end
-           
+
            `INST_OR32_SH: // l.sh
-           begin 
+           begin
                v_mem_addr = (v_reg_ra + v_store_imm);
                mem_addr <= {v_mem_addr[31:2],2'b00};
                case (v_mem_addr[1:0])
-                   2'b00 : 
-                   begin 
+                   2'b00 :
+                   begin
                        mem_data_out <= {v_reg_rb[15:0],16'h0000};
                        mem_wr <= 4'b1100;
                        v_mem_access = 1'b1;
                    end
-                   2'b10 : 
-                   begin 
+                   2'b10 :
+                   begin
                        mem_data_out <= {16'h0000,v_reg_rb[15:0]};
                        mem_wr <= 4'b0011;
                        v_mem_access = 1'b1;
                    end
-                   default : 
-                   begin 
+                   default :
+                   begin
                        mem_data_out <= 32'h00000000;
                        mem_wr <= 4'b0000;
                    end
                endcase
            end
-           
+
            `INST_OR32_SW: // l.sw
-           begin 
+           begin
                v_mem_addr = (v_reg_ra + v_store_imm);
                mem_addr <= {v_mem_addr[31:2],2'b00};
                mem_data_out <= v_reg_rb;
                mem_wr <= 4'b1111;
                v_mem_access = 1'b1;
-               
+
 `ifdef CONF_CORE_DEBUG
                $display(" - Store to 0x%08x = 0x%08x", {v_mem_addr[31:2],2'b00}, v_reg_rb);
-`endif               
-           end           
-           
+`endif
+           end
+
           `INST_OR32_MISC:
           begin
                case (v_mem_data_in[31:24])
                    `INST_OR32_SYS: // l.sys
-                   begin 
+                   begin
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_SYSCALL;
                    end
-                   
+
                    `INST_OR32_TRAP: // l.trap
-                   begin 
+                   begin
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_TRAP;
                        break_o <= 1'b1;
                    end
-                   
-                   default : 
-                   begin 
+
+                   default :
+                   begin
                        fault_o <= 1'b1;
                        v_exception = 1'b1;
                        v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
                    end
-               endcase             
+               endcase
            end
-           
+
            `INST_OR32_XORI: // l.xori
-           begin 
+           begin
                alu_func <= `ALU_XOR;
                alu_a <= v_reg_ra;
                alu_b <= v_imm_int32;
                v_write_rd = 1'b1;
            end
-           
-           default : 
-           begin 
+
+           default :
+           begin
                fault_o <= 1'b1;
                v_exception = 1'b1;
                v_vector = ISR_VECTOR + `VECTOR_ILLEGAL_INST;
            end
        endcase
-       
+
        //---------------------------------------------------------------
        // Branch logic
        //---------------------------------------------------------------
-       
+
        // Handle branches
-       if (v_branch == 1'b1) 
-       begin 
+       if (v_branch == 1'b1)
+       begin
            v_offset         = {v_target[29:0],2'b00};
            v_pc             = (r_pc + v_offset - 4);
-           
+
            // Next instruction is branch delay slot
            r_branch_dslot   <= 1'b1;
            r_pc_branch      <= v_pc;
-           
+
            // Don't service external interrupts before executing branch delay slot.
            v_no_intr = 1'b1;
-           
-`ifdef CONF_CORE_DEBUG               
+
+`ifdef CONF_CORE_DEBUG
            $display(" - Branch to 0x%08x", v_pc);
-`endif           
+`endif
        end
        // Handle jumps
-       else if (v_jmp == 1'b1) 
-       begin 
+       else if (v_jmp == 1'b1)
+       begin
            // Next instruction is branch delay slot
            r_branch_dslot   <= 1'b1;
            r_pc_branch      <= v_pc;
-           
+
            // Don't service external interrupts before executing branch delay slot.
-           v_no_intr = 1'b1;           
-           
-`ifdef CONF_CORE_DEBUG               
+           v_no_intr = 1'b1;
+
+`ifdef CONF_CORE_DEBUG
            $display(" - Jump to 0x%08x", v_pc);
 `endif
        end
        // Exception (Fault/Syscall/Break)
-       else if (v_exception == 1'b1) 
+       else if (v_exception == 1'b1)
        begin
             // The value of r_pc cannot be a branch delay slot as the exception
             // causing instruction / fault is not a branch.
             v_sr[`OR32_SR_DSX] = 1'b0;
-        
+
             // Save PC (exception causing PC+4) & SR
             r_epc <= r_pc;
             r_esr <= v_sr;
-            
+
             // Disable further interrupts
             v_sr = 0;
-            
+
             // Set PC to exception vector
             v_pc = v_vector;
             r_pc <= v_pc;
-            
+
             // Do not execute next instruction which will be exception
             // PC + 4. This allows the PC change latency to take effect.
             r_flush_next <= 1'b1;
-            
+
            // Don't allow external interrupts to occur before servicing the exception
-           v_no_intr = 1'b1;            
-            
+           v_no_intr = 1'b1;
+
 `ifdef CONF_CORE_DEBUG
            $display(" - Exception 0x%08x", v_vector);
 `endif
-       end       
-       
+       end
+
        //---------------------------------------------------------------
        // PC update logic
        //---------------------------------------------------------------
-              
+
        // Revert to previous instruction if execution failed?
        if (v_load_stall)
        begin
@@ -1252,25 +1473,25 @@ begin
             r_pc <= v_pc;
 `ifdef CONF_CORE_DEBUG
            $display(" - Revert PC to failed instruction 0x%08x", v_pc);
-`endif            
+`endif
        end
        // Stall in branch delay slot due to mem access?
-       else if (d_mem_access && r_branch_dslot) 
+       else if (d_mem_access && r_branch_dslot)
        begin
            v_pc = r_pc_branch;
            r_pc <= v_pc;
-           
+
            // Don't allow external interrupts to occur before fetching the next inst.
-           v_no_intr = 1'b1;               
-           
+           v_no_intr = 1'b1;
+
 `ifdef CONF_CORE_DEBUG
            $display(" - Override PC to 0x%08x (BDS in mem shaddow)", r_pc_branch);
-`endif      
-       end    
+`endif
+       end
        // Update to new PC value only if last cycle wasn't a memory access
        // (as instruction fetch would not occur as memory bus in-use by data access)
        else if (r_mem_access == 1'b0)
-       begin 
+       begin
            r_pc <= v_pc;
 `ifdef CONF_CORE_DEBUG
            $display(" - Update PC to 0x%08x", v_pc);
@@ -1287,145 +1508,162 @@ begin
             // Save PC (PC+4) & SR
             r_epc <= r_pc;
             r_esr <= v_sr;
-            
+
             // Disable further interrupts
-            v_sr = 0;            
-            
+            v_sr = 0;
+
             // Set PC to external interrupt vector
             v_pc  = ISR_VECTOR + `VECTOR_EXTINT;
             r_pc <= v_pc;
-            
+
             // Do not execute next instruction which will be PC + 4.
             // This allows the PC change latency to take effect.
             r_flush_next <= 1'b1;
 
 `ifdef CONF_CORE_DEBUG
            $display(" - External Interrupt 0x%08x", v_vector);
-`endif            
+`endif
        end
-           
+
        // Update other registers with variable values
        r_sr         <= v_sr;
        r_reg_result <= v_reg_result;
        r_mem_access <= v_mem_access;
-       
+
        // No writeback required?
        if (v_write_rd == 1'b0)
        begin
            // Target register is R0 which is read-only
            r_rd_wb <= 5'b00000;
-       end                
+       end
    end
 end
 
 //-------------------------------------------------------------------
 // Writeback
-//-------------------------------------------------------------------   
+//-------------------------------------------------------------------
 reg [31:0] wb_v_reg_result;
 reg [7:0] wb_v_inst;
 
 always @ (posedge clk_i or posedge rst_i)
-begin 
+begin
    if (rst_i == 1'b1)
    begin
        r_writeback <= 1'b1;
    end
-   else 
-   begin 
+   else
+   begin
        r_writeback <= 1'b0;
-       
+
        if ((en_i == 1'b1) && (mem_pause_i == 1'b0))
-       begin 
-       
+       begin
+
            wb_v_reg_result = d_reg_result;
-           
+
            // Handle delayed result instructions
            wb_v_inst = {2'b00,d_opcode[31:26]};
            case (wb_v_inst)
                `INST_OR32_LBS: // l.lbs
-               begin 
+               begin
                    case (d_mem_offset)
-                       2'b00 : 
+                       2'b00 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[31:24]};
-                       2'b01 : 
+                       2'b01 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[23:16]};
-                       2'b10 : 
+                       2'b10 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[15:8]};
-                       2'b11 : 
+                       2'b11 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[7:0]};
-                       default : 
+                       default :
                             wb_v_reg_result = 32'h00000000;
                    endcase
-                   
+
                    // Sign extend LB
                    if (wb_v_reg_result[7] == 1'b1)
                         wb_v_reg_result = {24'hFFFFFF,wb_v_reg_result[7:0]};
                end
-               
+
                `INST_OR32_LBZ: // l.lbz
                    case (d_mem_offset)
-                       2'b00 : 
+                       2'b00 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[31:24]};
-                       2'b01 : 
+                       2'b01 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[23:16]};
-                       2'b10 : 
+                       2'b10 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[15:8]};
-                       2'b11 : 
+                       2'b11 :
                             wb_v_reg_result = {24'h000000,mem_data_in_i[7:0]};
-                       default : 
+                       default :
                             wb_v_reg_result = 32'h00000000;
                    endcase
-                   
+
                `INST_OR32_LHS: // l.lhs
-               begin 
+               begin
                    case (d_mem_offset)
-                       2'b00 : 
+                       2'b00 :
                             wb_v_reg_result = {16'h0000,mem_data_in_i[31:16]};
-                       2'b10 : 
+                       2'b10 :
                             wb_v_reg_result = {16'h0000,mem_data_in_i[15:0]};
-                       default : 
+                       default :
                             wb_v_reg_result = 32'h00000000;
                    endcase
-                   
+
                    // Sign extend LH
                    if (wb_v_reg_result[15] == 1'b1)
                         wb_v_reg_result = {16'hFFFF,wb_v_reg_result[15:0]};
                end
-               
+
                `INST_OR32_LHZ: // l.lhz
                    case (d_mem_offset)
-                       2'b00 : 
+                       2'b00 :
                             wb_v_reg_result = {16'h0000,mem_data_in_i[31:16]};
-                       2'b10 : 
+                       2'b10 :
                             wb_v_reg_result = {16'h0000,mem_data_in_i[15:0]};
-                       default : 
+                       default :
                             wb_v_reg_result = 32'h00000000;
                    endcase
-                                    
+
                `INST_OR32_LWZ, `INST_OR32_LWS: // l.lwz l.lws
                     wb_v_reg_result = mem_data_in_i;
-                    
-               default : 
+
+               default :
                     wb_v_reg_result = d_reg_result;
            endcase
-           
+
+`ifdef CONF_MULT_HW
+           if (d_multhi == 1'b1)
+           begin
+                r_reg_rd <= mult_res[63:32];
+`ifdef CONF_CORE_DEBUG                
+                $display("%08x: Result from multiplier (HI), %08x -> Rd[%d]", d_pc, mult_res[63:32], d_rd_wb);
+`endif                
+           end
+           else if (d_mult == 1'b1)
+           begin
+                r_reg_rd <= mult_res[31:0];
+`ifdef CONF_CORE_DEBUG                
+                $display("%08x: Result from multiplier (LO), %08x -> Rd[%d]", d_pc, mult_res[31:0], d_rd_wb);
+`endif                
+           end
+           else
+`endif           
            // Result from memory / other
            if (d_alu_func == `ALU_NONE)
            begin
                r_reg_rd <= wb_v_reg_result;
            end
            // Result from ALU
-           else 
+           else
            begin
                r_reg_rd <= d_alu_result;
            end
-           
+
            // Register writeback required?
            if (d_rd_wb != 5'b00000)
            begin
                r_writeback <= 1'b1;
-               
-`ifdef CONF_CORE_DEBUG               
+
+`ifdef CONF_CORE_DEBUG
            if (d_alu_func == `ALU_NONE)
                 $display(" - Writeback R%d = 0x%08x", d_rd_wb, wb_v_reg_result);
            else
@@ -1434,13 +1672,13 @@ begin
            end
        end
    end
-end 
+end
 
-   
+
 //-------------------------------------------------------------------
 // Combinatorial
-//------------------------------------------------------------------- 
-   
+//-------------------------------------------------------------------
+
 // Memory access mux
 assign mem_data_in          = mem_data_in_i;
 assign mem_addr_mux         = (r_mem_access == 1'b1) ? mem_addr : r_pc;
@@ -1452,10 +1690,29 @@ assign mem_wr_o             = (mem_pause_i == 1'b0) ?  mem_wr : 4'b0000;
 // Opcode register decoding
 assign r_rd                 = mem_data_in_i[25:21];
 assign r_ra                 = mem_data_in_i[20:16];
-assign r_rb                 = mem_data_in_i[15:11];  
+assign r_rb                 = mem_data_in_i[15:11];
 
-assign dbg_pc_o             = r_pc;
+`include "altor32_funcs.v"
 
-`include "altor32_funcs.v"    
-    
+//-------------------------------------------------------------------
+// Hooks for debug
+//-------------------------------------------------------------------
+`ifdef verilator
+   function [31:0] get_pc;
+      // verilator public
+      get_pc = r_pc;
+   endfunction
+   
+   function [31:0] get_pc_ex;
+      // verilator public
+      get_pc_ex = d_pc;
+   endfunction
+   
+   function [31:0] get_opcode_ex;
+      // verilator public
+      get_opcode_ex = (mem_pause_i == 1'b0) ? r_opcode : `OPCODE_INST_BUBBLE;
+   endfunction      
+`endif
+
+
 endmodule

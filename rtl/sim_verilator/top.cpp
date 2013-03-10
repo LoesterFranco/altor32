@@ -2,7 +2,7 @@
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -13,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -35,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 #include <stdio.h>
 #include <unistd.h>
@@ -48,6 +48,10 @@
 #include "Vtop_top.h"
 #include "Vtop_sram4__S13.h"
 #include "Vtop_sram__S13.h"
+#include "Vtop_soc_core__pi1.h"
+#include "Vtop_cpu__B10000000_I10000000.h"
+#include "inst_dump.h"
+
 #include "verilated.h"
 
 #if VM_TRACE
@@ -59,19 +63,23 @@
 //-----------------------------------------------------------------
 // Memory start offset (set to 0x2000 to match FPGA version where 
 // bootloader exists in first 8K)
-#define MEMORY_START        0x0000
-#define MEMORY_SIZE			(512 * 1024)
+#define MEMORY_START        0x10000000
+#define MEMORY_SIZE         (512 * 1024)
 #define REGISTERS           32
+
+#define OR32_BUBBLE_OPCODE  0xFC000000
+
+#define CPU_INSTANCE        top->v->u1_cpu->u1_cpu
 
 //-----------------------------------------------------------------
 // Locals
 //-----------------------------------------------------------------
 static Vtop *top;
-static unsigned int _stop_pc = 0xFFFFFFFF;
+static unsigned int         _stop_pc = 0xFFFFFFFF;
 
 #if VM_TRACE
-static unsigned int		main_time = 0;
-static VerilatedVcdC*	tfp;
+static unsigned int        main_time = 0;
+static VerilatedVcdC*      tfp;
 #endif
 
 //-----------------------------------------------------------------
@@ -117,7 +125,7 @@ int top_load(unsigned int addr, unsigned char val)
     if (addr >= (MEMORY_SIZE - MEMORY_START))
         return -1;
 
-    addr += MEMORY_START;
+    addr -= MEMORY_START;
 
     switch (addr & 0x3)
     {
@@ -147,7 +155,7 @@ unsigned char top_mem_read(unsigned int addr)
     if (addr >= (MEMORY_SIZE - MEMORY_START))
         return 0;
 
-    addr += MEMORY_START;
+    addr -= MEMORY_START;
 
     switch (addr & 0x3)
     {
@@ -183,10 +191,11 @@ int top_setbreakpoint(int bp, unsigned int pc)
 //-----------------------------------------------------------------
 // top_run
 //-----------------------------------------------------------------
-int top_run(int cycles)
+int top_run(int cycles, int intr_after_cycles)
 {
     int current_cycle = 0;
-    unsigned int last_pc = top->dbg_pc_o;
+    int clocks = 0;
+    unsigned int last_pc = CPU_INSTANCE->get_pc();
 
     // Run until fault or number of cycles completed
     while (!Verilated::gotFinish() && !top->fault_o && (current_cycle < cycles || cycles == -1)) 
@@ -201,7 +210,9 @@ int top_run(int cycles)
 
         // CLK->H
         top->clk_i = 1;
-        top->eval();			
+        top->eval();            
+
+        clocks++;
 
 #if VM_TRACE
         if (tfp) tfp->dump (main_time++);
@@ -210,15 +221,46 @@ int top_run(int cycles)
         if (top->uart_wr_o)
             printf("%c", top->uart_data_o);
 
-        if (last_pc != top->dbg_pc_o)
-        {			
-            last_pc = top->dbg_pc_o;
+#ifdef INST_TRACE
+        // Instruction trace - decode instruction opcode to text
+        char text[255];
+        unsigned int opcode = CPU_INSTANCE->get_opcode_ex();
+        unsigned int pc = CPU_INSTANCE->get_pc_ex();
+        static unsigned int fetch_pc = last_pc;
+
+        if (opcode != OR32_BUBBLE_OPCODE)
+        {
+            or32_instruction_to_string(opcode, text, sizeof(text)-1);
+            printf("%08x:   %02x %02x %02x %02x     %s\n", fetch_pc, (opcode >> 24) & 0xFF, (opcode >> 16) & 0xFF, (opcode >> 8) & 0xFF, (opcode >> 0) & 0xFF, text);
+            fetch_pc = pc;
+        }
+#endif
+
+        // Generate interrupt after a certain number of cycles?
+        if (intr_after_cycles >= 0 && intr_after_cycles == current_cycle)
+        {
+            top->intr_i = 1;
+            intr_after_cycles = -1;
+        }
+        else
+            top->intr_i = 0;
+
+        unsigned int new_pc = CPU_INSTANCE->get_pc();
+        if (last_pc != new_pc)
+        {            
+            last_pc = new_pc;
             current_cycle++;
         }
 
-        if (_stop_pc == top->dbg_pc_o || top->break_o)
-            break;
+        // Breakpoint hit
+        if (_stop_pc == new_pc || top->break_o)
+        {
+            printf("Cycles = %d\n", clocks);
+            return TOP_RES_BREAKPOINT;
+        }
     }
+
+    printf("Cycles = %d\n", clocks);
 
     // Fault
     if (top->fault_o)
@@ -226,9 +268,6 @@ int top_run(int cycles)
     // Number of cycles reached
     else if (current_cycle >= cycles)
         return TOP_RES_MAX_CYCLES;
-    // Breakpoint hit
-    else if (_stop_pc == top->dbg_pc_o || top->break_o)
-        return TOP_RES_BREAKPOINT;
     // No error
     else
         return TOP_RES_OK;
@@ -275,7 +314,7 @@ unsigned int top_getreg(int reg)
 //-----------------------------------------------------------------
 unsigned int top_getpc(void)
 {
-    return top->dbg_pc_o;
+    return CPU_INSTANCE->get_pc();
 }
 //-----------------------------------------------------------------
 // top_done

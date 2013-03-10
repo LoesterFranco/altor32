@@ -2,7 +2,7 @@
 //                           AltOR32 
 //              Alternative Lightweight OpenRisc 
 //                     Ultra-Embedded.com
-//                   Copyright 2011 - 2012
+//                   Copyright 2011 - 2013
 //
 //               Email: admin@ultra-embedded.com
 //
@@ -13,7 +13,7 @@
 // for more details.
 //-----------------------------------------------------------------
 //
-// Copyright (C) 2011 - 2012 Ultra-Embedded.com
+// Copyright (C) 2011 - 2013 Ultra-Embedded.com
 //
 // This source file may be used and distributed without         
 // restriction provided that this copyright statement is not    
@@ -35,7 +35,7 @@
 // You should have received a copy of the GNU Lesser General    
 // Public License along with this source; if not, write to the 
 // Free Software Foundation, Inc., 59 Temple Place, Suite 330, 
-// Boston, MA  02111-1307  USA              
+// Boston, MA  02111-1307  USA
 //-----------------------------------------------------------------
 
 //-----------------------------------------------------------------
@@ -56,8 +56,7 @@ module top
     intr_i,
     // Debug Register Access
     dbg_reg_addr_i, 
-    dbg_reg_out_o, 
-    dbg_pc_o, 
+    dbg_reg_out_o,
     // UART output
     uart_data_o, 
     uart_wr_o
@@ -80,7 +79,6 @@ output              break_o /*verilator public*/;
 input               intr_i /*verilator public*/;
 input [8:0]         dbg_reg_addr_i /*verilator public*/;
 output [31:0]       dbg_reg_out_o /*verilator public*/;
-output [31:0]       dbg_pc_o /*verilator public*/;
 output [7:0]        uart_data_o /*verilator public*/;
 output              uart_wr_o /*verilator public*/;
 
@@ -90,13 +88,17 @@ output              uart_wr_o /*verilator public*/;
 wire                fault_o;
 wire                break_o;
 wire [31:0]         dbg_reg_out_o;
-wire [31:0]         dbg_pc_o;
 wire [7:0]          uart_data_o;
 wire                uart_wr_o;
 wire [31:0]         int_mem_addr_o;
 wire [31:0]         int_mem_data_o;
 wire [31:0]         int_mem_data_i;
 wire [3:0]          int_mem_wr_o;
+
+wire [31:0]         ext_mem_addr_o;
+wire [31:0]         ext_mem_data_o;
+wire [31:0]         ext_mem_data_i;
+wire [3:0]          ext_mem_wr_o;
 
 //-----------------------------------------------------------------
 // Instantiation
@@ -115,14 +117,27 @@ u1_bram
     .wr_i(int_mem_wr_o)
 );
 
-alt_soc  
+sram4  
+#(
+    .SRAM_ADDR_WIDTH(SRAM_ADDR_WIDTH)
+) 
+u2_bram
+(
+    .clk_i(clk_i), 
+    .address_i(ext_mem_addr_o), 
+    .data_i(ext_mem_data_o), 
+    .data_o(ext_mem_data_i), 
+    .wr_i(ext_mem_wr_o)
+);
+
+soc_core  
 #(
     .CLK_KHZ(CLK_KHZ),
     .UART_BAUD(115200),
     .EXTERNAL_INTERRUPTS(1),
-    .CORE_ID(32'h00000000),
-    .BOOT_VECTOR(32'h00000000),
-    .ISR_VECTOR(32'h00000000)
+    .BOOT_VECTOR(32'h10000000),
+    .ISR_VECTOR(32'h10000000),
+    .REGISTER_FILE_TYPE("SIMULATION")
 ) 
 u1_cpu
 (
@@ -147,10 +162,10 @@ u1_cpu
     .int_mem_pause_i(1'b0),
     
     // External Memory
-    .ext_mem_addr_o(/*open */), 
-    .ext_mem_data_o(/*open */), 
-    .ext_mem_data_i(32'h00000000), 
-    .ext_mem_wr_o(/*open */), 
+    .ext_mem_addr_o(ext_mem_addr_o), 
+    .ext_mem_data_o(ext_mem_data_o), 
+    .ext_mem_data_i(ext_mem_data_i), 
+    .ext_mem_wr_o(ext_mem_wr_o), 
     .ext_mem_rd_o(/*open */), 
     .ext_mem_pause_i(1'b0),
     
@@ -161,9 +176,6 @@ u1_cpu
     .ext_io_wr_o(/*open */), 
     .ext_io_rd_o(/*open */), 
     .ext_io_pause_i(1'b0),
-    
-    // Debug Access
-    .dbg_pc_o(dbg_pc_o), 
     
     // Debug UART output
     .dbg_uart_data_o(uart_data_o), 
