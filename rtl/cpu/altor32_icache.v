@@ -60,10 +60,10 @@ module altor32_icache
     output                      busy_o /*verilator public*/,
 
     // Memory interface (slave)
-    output [31:0]               mem_addr_o /*verilator public*/,
+    output reg [31:0]           mem_addr_o /*verilator public*/,
     input [31:0]                mem_data_i /*verilator public*/,
-    output                      mem_burst_o /*verilator public*/,
-    output                      mem_rd_o /*verilator public*/,
+    output reg                  mem_burst_o /*verilator public*/,
+    output reg                  mem_rd_o /*verilator public*/,
     input                       mem_accept_i/*verilator public*/,
     input                       mem_ack_i/*verilator public*/
 );
@@ -116,15 +116,8 @@ reg [CACHE_LINE_SIZE_WIDTH-3:0] fetch_word;
 reg [31:0]                      last_pc;
 reg [31:0]                      miss_pc;
 
-wire                            busy_o;
-wire                            miss_o;
-
 reg                             initial_fetch;
 reg                             flush_req;
-
-reg [31:0]                      mem_addr_o;
-reg                             mem_rd_o;
-reg                             mem_burst_o;
 
 reg [CACHE_LINE_ADDR_WIDTH-1:0] flush_addr;
 reg                             flush_wr;
@@ -144,7 +137,7 @@ assign cache_address_rd = pc_i[CACHE_LINE_ADDR_WIDTH + CACHE_LINE_SIZE_WIDTH - 1
 
 assign miss_o           = (!tag_data_out[CACHE_TAG_VALID_BIT] || (last_pc[CACHE_TAG_ADDR_HIGH:CACHE_TAG_ADDR_LOW] != tag_data_out[14:0])) ? 1'b1: 1'b0;
 
-wire valid_o            = !miss_o && !busy_o;
+assign valid_o            = !miss_o && !busy_o;
 
 //-----------------------------------------------------------------
 // Control logic

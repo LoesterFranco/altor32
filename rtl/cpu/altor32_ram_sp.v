@@ -38,7 +38,11 @@
 //-----------------------------------------------------------------
 // Module: altor32_ram_sp - Single port RAM (used in cache)
 //-----------------------------------------------------------------
-module altor32_ram_sp 
+module altor32_ram_sp
+#(
+    parameter  [31:0]       WIDTH = 8,
+    parameter  [31:0]       SIZE = 14
+)
 ( 
     input                   clk_i /*verilator public*/,
     output [(WIDTH - 1):0]  dat_o /*verilator public*/,
@@ -46,12 +50,6 @@ module altor32_ram_sp
     input [(SIZE - 1):0]    adr_i /*verilator public*/,
     input                   wr_i /*verilator public*/
 );
-
-//-----------------------------------------------------------------
-// Params
-//-----------------------------------------------------------------
-parameter  [31:0]       WIDTH = 8;
-parameter  [31:0]       SIZE = 14;
 
 //-----------------------------------------------------------------
 // Registers

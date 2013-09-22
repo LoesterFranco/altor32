@@ -40,35 +40,35 @@
 //-----------------------------------------------------------------
 module altor32_dcache_mem_if
 ( 
-    input           clk_i /*verilator public*/, 
-    input           rst_i /*verilator public*/, 
+    input               clk_i /*verilator public*/, 
+    input               rst_i /*verilator public*/, 
     
     // Cache interface
-    input [31:0]    address_i /*verilator public*/,
-    input [31:0]    data_i /*verilator public*/,
-    output [31:0]   data_o /*verilator public*/,
-    input           fill_i /*verilator public*/,
-    input           evict_i /*verilator public*/,
-    input  [31:0]   evict_addr_i /*verilator public*/,
-    input           rd_single_i /*verilator public*/,
-    input [3:0]     wr_single_i /*verilator public*/,
-    output          done_o /*verilator public*/,
+    input [31:0]        address_i /*verilator public*/,
+    input [31:0]        data_i /*verilator public*/,
+    output reg [31:0]   data_o /*verilator public*/,
+    input               fill_i /*verilator public*/,
+    input               evict_i /*verilator public*/,
+    input  [31:0]       evict_addr_i /*verilator public*/,
+    input               rd_single_i /*verilator public*/,
+    input [3:0]         wr_single_i /*verilator public*/,
+    output reg          done_o /*verilator public*/,
 
     // Cache memory (fill/evict)
-    output [31:2]   cache_addr_o /*verilator public*/,
-    output [31:0]   cache_data_o /*verilator public*/,
-    input  [31:0]   cache_data_i /*verilator public*/,
-    output          cache_wr_o /*verilator public*/,
+    output reg [31:2]   cache_addr_o /*verilator public*/,
+    output reg [31:0]   cache_data_o /*verilator public*/,
+    input      [31:0]   cache_data_i /*verilator public*/,
+    output reg          cache_wr_o /*verilator public*/,
     
     // Memory interface (slave)
-    output [31:0]   mem_addr_o /*verilator public*/,
-    input  [31:0]   mem_data_i /*verilator public*/,
-    output [31:0]   mem_data_o /*verilator public*/,
-    output          mem_burst_o /*verilator public*/,
-    output          mem_rd_o /*verilator public*/,
-    output [3:0]    mem_wr_o /*verilator public*/,
-    input           mem_accept_i/*verilator public*/,
-    input           mem_ack_i/*verilator public*/
+    output reg [31:0]   mem_addr_o /*verilator public*/,
+    input  [31:0]       mem_data_i /*verilator public*/,
+    output reg [31:0]   mem_data_o /*verilator public*/,
+    output reg          mem_burst_o /*verilator public*/,
+    output reg          mem_rd_o /*verilator public*/,
+    output reg [3:0]    mem_wr_o /*verilator public*/,
+    input               mem_accept_i/*verilator public*/,
+    input               mem_ack_i/*verilator public*/
 );
 
 //-----------------------------------------------------------------
@@ -81,21 +81,8 @@ parameter CACHE_LINE_WORDS_IDX_MAX  = CACHE_LINE_SIZE_WIDTH - 2; /* 3-bit -> 8 w
 // Registers / Wires
 //-----------------------------------------------------------------
 
-reg [31:2]                      cache_addr_o;
-reg [31:0]                      cache_data_o;
-reg                             cache_wr_o;
-  
 reg [31:CACHE_LINE_SIZE_WIDTH]  line_address;
 reg [CACHE_LINE_SIZE_WIDTH-3:0] line_word;
-
-reg [31:0]                      data_o;
-reg                             done_o;
-
-reg [31:0]                      mem_addr_o;
-reg [31:0]                      mem_data_o;
-reg                             mem_rd_o;
-reg [3:0]                       mem_wr_o;
-reg                             mem_burst_o;
 
 // Current state
 parameter STATE_IDLE        = 0;

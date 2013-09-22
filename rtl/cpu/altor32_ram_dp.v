@@ -39,6 +39,10 @@
 // Module: altor32_ram_dp - Dual port RAM (used in cache)
 //-----------------------------------------------------------------
 module altor32_ram_dp
+#(
+    parameter               WIDTH = 8,
+    parameter               SIZE = 14
+)
 (
     input                   aclk_i /*verilator public*/,
     output [(WIDTH - 1):0]  adat_o /*verilator public*/,
@@ -52,12 +56,6 @@ module altor32_ram_dp
     input [(SIZE - 1):0]    badr_i /*verilator public*/,
     input                   bwr_i /*verilator public*/
 );
-
-//-----------------------------------------------------------------
-// Params
-//-----------------------------------------------------------------
-parameter  [31:0]       WIDTH = 8;
-parameter  [31:0]       SIZE = 14;
 
 //-----------------------------------------------------------------
 // Registers
